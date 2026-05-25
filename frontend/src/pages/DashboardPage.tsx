@@ -24,6 +24,7 @@ import {
 import { fetchSensors, fetchSensorHistory, type Sensor, type SensorReading } from "@/lib/api"
 import { useWebSocket } from "@/hooks/useWebSocket"
 import { useTheme } from "@/lib/theme"
+import { useLanguage, useT } from "@/lib/language"
 import { getChartColors } from "@/hooks/useChartColors"
 
 const kpiIcons: Record<string, React.ElementType> = {
@@ -59,8 +60,10 @@ export default function DashboardPage() {
   const [selectedSensor, setSelectedSensor] = useState<number | null>(null)
   const { lastMessage } = useWebSocket()
   const { theme } = useTheme()
+  const { lang } = useLanguage()
   const isDark = theme === "dark"
   const c = getChartColors(isDark)
+  const t = useT()
 
   const loadData = useCallback(async () => {
     try {
@@ -136,9 +139,9 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t("dashboard")}</h1>
         <p className="text-sm text-muted-foreground">
-          Real-time sensor monitoring — 6 sensors across 2 circuits
+          {lang === "id" ? "Monitoring sensor real-time — 6 sensor di 2 sirkuit" : "Real-time sensor monitoring — 6 sensors across 2 circuits"}
         </p>
       </div>
 
@@ -266,7 +269,7 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Circuit 1 (Primary)</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{lang === "id" ? "Sirkuit 1 (Utama)" : "Circuit 1 (Primary)"}</CardTitle>
             <div className="rounded-lg bg-primary/20 p-1.5 text-primary">
               <CircuitBoard className="h-4 w-4" />
             </div>
@@ -286,7 +289,7 @@ export default function DashboardPage() {
                 <span className="font-mono font-bold">{p1?.toFixed(0) ?? "--"} W</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Load share</span>
+                <span className="text-sm text-muted-foreground">{lang === "id" ? "Beban" : "Load share"}</span>
                 <span className="font-mono font-bold">~64%</span>
               </div>
             </div>
@@ -295,7 +298,7 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Circuit 2 (Secondary)</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{lang === "id" ? "Sirkuit 2 (Kedua)" : "Circuit 2 (Secondary)"}</CardTitle>
             <div className="rounded-lg bg-accent p-1.5 text-accent-foreground">
               <CircuitBoard className="h-4 w-4" />
             </div>
@@ -315,7 +318,7 @@ export default function DashboardPage() {
                 <span className="font-mono font-bold">{p2?.toFixed(0) ?? "--"} W</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Load share</span>
+                <span className="text-sm text-muted-foreground">{lang === "id" ? "Beban" : "Load share"}</span>
                 <span className="font-mono font-bold">~36%</span>
               </div>
             </div>
@@ -327,20 +330,20 @@ export default function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Power</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{lang === "id" ? "Total Daya" : "Total Power"}</CardTitle>
             <Gauge className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalPower.toFixed(0)}<span className="ml-1 text-sm font-normal text-muted-foreground">W</span></div>
             <p className="mt-1 text-xs text-muted-foreground">
-              ~{monthlyCost}/bulan
+              ~{monthlyCost}/{lang === "id" ? "bulan" : "month"}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Current</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{lang === "id" ? "Total Arus" : "Total Current"}</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -351,20 +354,20 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Line Balance</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{lang === "id" ? "Keseimbangan" : "Line Balance"}</CardTitle>
             <LineChart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{lineDiff}<span className="ml-1 text-sm font-normal text-muted-foreground">V</span></div>
             <p className="mt-1 text-xs text-muted-foreground">
-              {lineDiff !== "--" && parseFloat(lineDiff) < 5 ? "Excellent" : lineDiff !== "--" ? "Check" : "--"}
+              {lineDiff !== "--" && parseFloat(lineDiff) < 5 ? (lang === "id" ? "Sangat Baik" : "Excellent") : lineDiff !== "--" ? "Check" : "--"}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Load Ratio</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{lang === "id" ? "Rasio Beban" : "Load Ratio"}</CardTitle>
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import { Toaster } from "sonner"
 import { isAuthenticated } from "@/lib/api"
 import { ThemeProvider, useTheme } from "@/lib/theme"
+import { LanguageProvider } from "@/lib/language"
 import Layout from "@/components/layout/Layout"
 import LoginPage from "@/pages/LoginPage"
 import DashboardPage from "@/pages/DashboardPage"
@@ -55,11 +56,13 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <BrowserRouter>
-        <AppToaster />
-        <AppRoutes />
-      </BrowserRouter>
-    </ThemeProvider>
+    <LanguageProvider>
+      <ThemeProvider>
+        <BrowserRouter>
+          <AppToaster />
+          <AppRoutes />
+        </BrowserRouter>
+      </ThemeProvider>
+    </LanguageProvider>
   )
 }

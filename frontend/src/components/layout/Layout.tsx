@@ -23,6 +23,7 @@ import {
 import ThreeBackground from "@/components/ThreeBackground"
 import { clearToken } from "@/lib/api"
 import { useTheme } from "@/lib/theme"
+import { useLanguage, t } from "@/lib/language"
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
@@ -38,8 +39,16 @@ const SIDEBAR_KEY = "sidebar-collapsed"
 export default function Layout() {
   const navigate = useNavigate()
   const { theme, toggle: toggleTheme } = useTheme()
+  const { lang, toggle: toggleLang } = useLanguage()
   const isDark = theme === "dark" || theme === "light" ? theme !== "light" : true
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDEBAR_KEY) === "true")
+
+  const navItems = [
+    { to: "/", icon: LayoutDashboard, label: lang === "id" ? "Dashboard" : "Dashboard" },
+    { to: "/statistics", icon: BarChart3, label: lang === "id" ? "Statistik" : "Statistics" },
+    { to: "/chatbot", icon: MessageSquare, label: lang === "id" ? "Chatbot" : "Chatbot" },
+    { to: "/profile", icon: User, label: lang === "id" ? "Profil" : "Profile" },
+  ]
 
   const toggle = () => {
     const next = !collapsed
@@ -117,7 +126,7 @@ export default function Layout() {
             ) : (
               <Button variant="ghost" className="w-full justify-start gap-3" onClick={handleLogout}>
                 <LogOut className="size-4" />
-                <span>Logout</span>
+                <span>{lang === "id" ? "Keluar" : "Logout"}</span>
               </Button>
             )}
           </div>
@@ -131,8 +140,11 @@ export default function Layout() {
             </Button>
             <Separator orientation="vertical" className="h-4" />
             <span className="flex-1 text-sm font-medium text-muted-foreground">
-              AI-Powered IoT Monitoring
+              {lang === "id" ? "Pemantauan IoT" : "AI-Powered IoT Monitoring"}
             </span>
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs font-medium" onClick={toggleLang}>
+              {lang === "id" ? "EN" : "ID"}
+            </Button>
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={toggleTheme}>
               {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
             </Button>

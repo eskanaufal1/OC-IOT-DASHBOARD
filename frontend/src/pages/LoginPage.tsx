@@ -5,6 +5,7 @@ import { Mail, Lock, Eye, EyeOff, Cpu, Sun, Moon } from "lucide-react"
 import ThreeBackground from "@/components/ThreeBackground"
 import { login } from "@/lib/api"
 import { useTheme } from "@/lib/theme"
+import { useLanguage } from "@/lib/language"
 import { toast } from "sonner"
 
 export default function LoginPage() {
@@ -14,6 +15,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
   const { theme, toggle: toggleTheme } = useTheme()
+  const { lang } = useLanguage()
   const isDark = theme === "dark"
 
   const handleSubmit = async (e: FormEvent) => {
@@ -83,10 +85,10 @@ export default function LoginPage() {
         </div>
 
         <h2 className={`mb-2.5 text-center text-[28px] font-bold leading-tight ${c.heading}`}>
-          Selamat datang
+          {lang === "id" ? "Selamat datang" : "Welcome back"}
         </h2>
         <p className={`mb-9 text-center ${c.subtitle}`}>
-          Masuk ke dashboard monitoring Anda
+          {lang === "id" ? "Masuk ke dashboard monitoring Anda" : "Sign in to your IoT dashboard"}
         </p>
 
         <form onSubmit={handleSubmit}>
@@ -126,10 +128,10 @@ export default function LoginPage() {
           <div className={`mb-7 flex items-center justify-between text-sm ${c.label}`}>
             <label className="flex cursor-pointer items-center gap-2">
               <input type="checkbox" className="accent-[#00a2ed]" />
-              Ingat saya
+              {lang === "id" ? "Ingat saya" : "Remember me"}
             </label>
             <button type="button" className="text-[#00a2ed] hover:underline">
-              Lupa password?
+              {lang === "id" ? "Lupa password?" : "Forgot password?"}
             </button>
           </div>
 
@@ -138,12 +140,12 @@ export default function LoginPage() {
             disabled={loading}
             className="h-auto w-full rounded-[18px] bg-gradient-to-r from-[#00a2ed] to-[#0077b6] py-[18px] text-lg font-bold tracking-[0.5px] text-white hover:from-[#00b0ff] hover:to-[#0080cc]"
           >
-            {loading ? "Memproses..." : "Masuk"}
+            {loading ? (lang === "id" ? "Memproses..." : "Processing...") : (lang === "id" ? "Masuk" : "Sign In")}
           </Button>
         </form>
 
         <p className={`mt-10 text-center text-[13px] ${c.footer}`}>
-          &copy; 2026 IoT Dashboard &bull; Akses Aman
+          &copy; 2026 IoT Dashboard &bull; {lang === "id" ? "Akses Aman" : "Secure Access"}
         </p>
       </div>
     </div>
