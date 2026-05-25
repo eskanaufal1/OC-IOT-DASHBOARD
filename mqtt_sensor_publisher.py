@@ -1,83 +1,106 @@
-#!/usr/bin/env python3
 """
-MQTT Sensor Publisher — publishes mock sensor readings to local MQTT broker.
-Topic format: sensors/{sensor_name}/data
-Payload: { "sensor_id": 1, "value": 220.5, "timestamp": "2024-..." }
+MQTT Sensor Publisher — publishes 6 sensor readings every 60 seconds via Mosquitto.
+Realistic daily load patterns with morning/evening peaks.
 """
-
 import json
-import time
+import math
+import os
 import random
-import threading
+import time
 from datetime import datetime, timezone
 
-MQTT_AVAILABLE = False
-try:
-    import paho.mqtt.client as mqtt
-    MQTT_AVAILABLE = True
-except ImportError:
-    print("[WARN] paho-mqtt not installed. Run: pip install paho-mqtt")
-    print("[INFO] Running in simulation mode (no MQTT broker needed)")
+import paho.mqtt.client as mqtt
 
-BROKER = "localhost"
-PORT = 1883
-TOPIC_PREFIX = "sensors"
+BROKER = os.getenv("MQTT_BROKER", "localhost")
+PORT = int(os.getenv("MQTT_PORT", "1883"))
+INTERVAL = int(os.getenv("PUBLISH_INTERVAL", "60"))
 
-SENSORS = [
-    {"id": 1, "name": "main_voltage", "base": 220.0, "noise": 2.0},
-    {"id": 2, "name": "main_amperage", "base": 15.0, "noise": 3.0},
-    {"id": 3, "name": "total_power", "base": 3300.0, "noise": 500.0},
-    {"id": 4, "name": "temperature", "base": 28.0, "noise": 1.5},
-    {"id": 5, "name": "humidity", "base": 65.0, "noise": 5.0},
-]
+TOPICS = {
+    "voltage_1": "sensors/voltage_1",
+    "voltage_2": "sensors/voltage_2",
+    "current_1": "sensors/current_1",
+    "current_2": "sensors/current_2",
+    "power_1":   "sensors/power_1",
+    "power_2":   "sensors/power_2",
+}
 
+UNITS = {
+    "voltage_1": "V", "voltage_2": "V",
+    "current_1": "A", "current_2": "A",
+    "power_1": "W", "power_2": "W",
+}
 
-def generate_reading(sensor):
-    value = sensor["base"] + random.uniform(-sensor["noise"], sensor["noise"])
-    return {
-        "sensor_id": sensor["id"],
-        "value": round(value, 2),
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    }
-
-
-def simulate_publish():
-    while True:
-        for sensor in SENSORS:
-            reading = generate_reading(sensor)
-            topic = f"{TOPIC_PREFIX}/{sensor['name']}/data"
-            print(f"[SIM] {topic} → {json.dumps(reading)}")
-        time.sleep(2)
+def hour_factor(hour: int) -> float:
+    """Daily load pattern: peak 06-09 and 18-22, dip 00-05."""
+    if 6 <= hour <= 9:   return 1.35
+    if 18 <= hour <= 22: return 1.20
+    if 0 <= hour <= 5:   return 0.50
+    return 1.0
 
 
-def mqtt_publish(client):
-    while True:
-        for sensor in SENSORS:
-            reading = generate_reading(sensor)
-            topic = f"{TOPIC_PREFIX}/{sensor['name']}/data"
-            payload = json.dumps(reading)
-            client.publish(topic, payload)
-            print(f"[MQTT] {topic} → {payload}")
-        time.sleep(2)
+def generate_reading(sensor: str, t: float) -> float:
+    dt = datetime.fromtimestamp(t, tz=timezone.utc)
+    h = dt.hour
+    f = hour_factor(h)
+    jitter = (random.random() - 0.5) * 0.06
+
+    if sensor.startswith("voltage"):
+        return round(220.5 + (random.random() - 0.5) * 3.0, 1)
+    elif sensor.startswith("current"):
+        base = 8.5 if sensor == "current_1" else 5.2
+        return round(base * f * (1 + jitter), 1)
+    elif sensor.startswith("power"):
+        base = 1874 if sensor == "power_1" else 1137
+        v_key = f"voltage_{sensor[-1]}"
+        c_key = f"current_{sensor[-1]}"
+        v = generate_reading(v_key, t)
+        c = generate_reading(c_key, t)
+        return round(v * c, 1)
+    return 0.0
 
 
 def main():
-    if not MQTT_AVAILABLE:
-        print("Starting MQTT sensor publisher (simulation mode)...")
-        simulate_publish()
-        return
+    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, "sensor-publisher")
+    
+    connected = False
+    def on_connect(client, userdata, flags, rc, props=None):
+        nonlocal connected
+        connected = rc == 0
+        status = "connected" if connected else f"failed (rc={rc})"
+        print(f"[MQTT] {status} to {BROKER}:{PORT}")
 
-    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
-    client.username_pw_set("jelly", "jelly1997")
+    client.on_connect = on_connect
 
     try:
         client.connect(BROKER, PORT, 60)
-        print(f"Connected to MQTT broker at {BROKER}:{PORT}")
-        mqtt_publish(client)
+        client.loop_start()
     except Exception as e:
-        print(f"Failed to connect to MQTT broker: {e}")
-        print("Falling back to simulation mode...")
-        simulate_publish()
+        print(f"[MQTT] Cannot connect to {BROKER}:{PORT} — {e}")
+        client.loop_start()
+
+    print(f"[Publisher] Starting — interval={INTERVAL}s")
+    seq = 0
+
+    while True:
+        now = time.time()
+        ts = datetime.now(timezone.utc).isoformat()
+
+        for sensor, topic in TOPICS.items():
+            value = generate_reading(sensor, now)
+            payload = json.dumps({
+                "sensor": sensor,
+                "value": value,
+                "unit": UNITS[sensor],
+                "timestamp": ts,
+            })
+            try:
+                client.publish(topic, payload, qos=1)
+            except Exception as e:
+                print(f"[MQTT] Publish error: {e}")
+
+        seq += 1
+        print(f"[Publisher] #{seq} published 6 sensors @ {ts[:19]}")
+        time.sleep(INTERVAL)
 
 
 if __name__ == "__main__":

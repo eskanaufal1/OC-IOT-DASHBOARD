@@ -2,14 +2,17 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"math"
 	"math/rand"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"iot-backend/internal/models"
 )
 
@@ -20,6 +23,20 @@ type SensorsHandler struct {
 	wsClients map[chan models.SensorReading]bool
 	wsMu      sync.RWMutex
 	done      chan struct{}
+	mqttOnline bool
+}
+
+type mqttPayload struct {
+	Sensor    string  `json:"sensor"`
+	Value     float64 `json:"value"`
+	Unit      string  `json:"unit"`
+	Timestamp string  `json:"timestamp"`
+}
+
+var sensorNameToID = map[string]int{
+	"voltage_1": 1, "voltage_2": 2,
+	"current_1": 3, "current_2": 4,
+	"power_1": 5, "power_2": 6,
 }
 
 func NewSensorsHandler() *SensorsHandler {
@@ -36,58 +53,139 @@ func NewSensorsHandler() *SensorsHandler {
 		readings:  make(map[int][]models.SensorReading),
 		wsClients: make(map[chan models.SensorReading]bool),
 		done:      make(chan struct{}),
+		mqttOnline: false,
 	}
-	mockValues := []float64{220.5, 218.7, 8.5, 5.2, 1874.3, 1137.2}
-	for i, s := range h.sensors {
-		if i < len(mockValues) {
-			val := mockValues[i]
-			h.sensors[i].LatestValue = &val
-			h.sensors[i].LatestTimestamp = &now
-		}
-		reading := models.SensorReading{
-			SensorID:  s.ID,
-			Value:     mockValues[i%len(mockValues)],
-			Timestamp: now,
-		}
-		h.readings[s.ID] = []models.SensorReading{reading}
+
+	baseValues := []float64{220.5, 218.7, 8.5, 5.2, 1874.3, 1137.2}
+	rng := rand.New(rand.NewSource(now.UnixNano()))
+
+	for i := range h.sensors {
+		val := baseValues[i%len(baseValues)]
+		h.sensors[i].LatestValue = &val
+		h.sensors[i].LatestTimestamp = &now
 	}
-	go h.simulateSensorData()
+
+	// Backfill 7 days of historical data at 60-second intervals
+	historySteps := 7 * 24 * 60
+	for step := historySteps; step >= 0; step-- {
+		t := now.Add(-time.Duration(step) * 60 * time.Second)
+		for i, s := range h.sensors {
+			b := baseValues[i%len(baseValues)]
+			v := b + (rng.Float64()-0.5)*b*0.08
+			if s.Type == "voltage" {
+				v = b + (rng.Float64()-0.5)*4.0
+			} else if s.Type == "amperage" {
+				hour := t.Hour()
+				factor := 1.0
+				if hour >= 6 && hour <= 9 {
+					factor = 1.4
+				} else if hour >= 18 && hour <= 22 {
+					factor = 1.2
+				} else if hour >= 0 && hour <= 5 {
+					factor = 0.5
+				}
+				v = b*factor + (rng.Float64()-0.5)*b*0.15
+			} else if s.Type == "power" {
+				hour := t.Hour()
+				factor := 1.0
+				if hour >= 6 && hour <= 9 {
+					factor = 1.4
+				} else if hour >= 18 && hour <= 22 {
+					factor = 1.2
+				} else if hour >= 0 && hour <= 5 {
+					factor = 0.5
+				}
+				v = b*factor + (rng.Float64()-0.5)*b*0.1
+			}
+			reading := models.SensorReading{SensorID: s.ID, Value: math.Round(v*10) / 10, Timestamp: t}
+			h.readings[s.ID] = append(h.readings[s.ID], reading)
+		}
+	}
+
+	go h.connectMQTT()
 	return h
 }
 
-func (h *SensorsHandler) simulateSensorData() {
-	ticker := time.NewTicker(2 * time.Second)
-	defer ticker.Stop()
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for {
-		select {
-		case <-h.done:
-			return
-		case <-ticker.C:
+func (h *SensorsHandler) connectMQTT() {
+	broker := os.Getenv("MQTT_BROKER")
+	if broker == "" {
+		broker = "localhost"
+	}
+	port := os.Getenv("MQTT_PORT")
+	if port == "" {
+		port = "1883"
+	}
+
+	opts := mqtt.NewClientOptions().
+		AddBroker("tcp://" + broker + ":" + port).
+		SetClientID("iot-go-backend").
+		SetAutoReconnect(true).
+		SetConnectRetry(true).
+		SetKeepAlive(30 * time.Second).
+		SetOnConnectHandler(func(c mqtt.Client) {
 			h.mu.Lock()
-			now := time.Now()
-			v1 := 220.5 + (rng.Float64()-0.5)*2.0
-			v2 := 218.7 + (rng.Float64()-0.5)*2.5
-			a1 := 8.5 + (rng.Float64()-0.3)*3.0
-			a2 := 5.2 + (rng.Float64()-0.4)*2.0
-			a1 = math.Max(a1, 1.0)
-			a2 = math.Max(a2, 0.5)
-			p1 := math.Round(v1*a1*10) / 10
-			p2 := math.Round(v2*a2*10) / 10
-			vals := []float64{v1, v2, math.Round(a1*10) / 10, math.Round(a2*10) / 10, p1, p2}
-			for i := range h.sensors {
-				h.sensors[i].LatestValue = &vals[i]
-				h.sensors[i].LatestTimestamp = &now
-				reading := models.SensorReading{SensorID: h.sensors[i].ID, Value: vals[i], Timestamp: now}
-				h.readings[h.sensors[i].ID] = append(h.readings[h.sensors[i].ID], reading)
-				if len(h.readings[h.sensors[i].ID]) > 1000 {
-					h.readings[h.sensors[i].ID] = h.readings[h.sensors[i].ID][len(h.readings[h.sensors[i].ID])-1000:]
-				}
-				h.broadcastReading(reading)
-			}
+			h.mqttOnline = true
 			h.mu.Unlock()
+			log.Printf("[MQTT] Connected to %s:%s — subscribing sensors/#", broker, port)
+			c.Subscribe("sensors/#", 1, h.onMQTTMessage)
+		}).
+		SetConnectionLostHandler(func(c mqtt.Client, err error) {
+			h.mu.Lock()
+			h.mqttOnline = false
+			h.mu.Unlock()
+			log.Printf("[MQTT] Connection lost: %v", err)
+		})
+
+	client := mqtt.NewClient(opts)
+	token := client.Connect()
+	if token.Wait() && token.Error() != nil {
+		log.Printf("[MQTT] Failed to connect: %v — sensors will show last known data", token.Error())
+		h.mu.Lock()
+		h.mqttOnline = false
+		h.mu.Unlock()
+		return
+	}
+
+	select {}
+}
+
+func (h *SensorsHandler) onMQTTMessage(_ mqtt.Client, msg mqtt.Message) {
+	var payload mqttPayload
+	if err := json.Unmarshal(msg.Payload(), &payload); err != nil {
+		log.Printf("[MQTT] Bad payload: %v", err)
+		return
+	}
+
+	sensorID, ok := sensorNameToID[payload.Sensor]
+	if !ok {
+		return
+	}
+
+	ts, err := time.Parse(time.RFC3339, payload.Timestamp)
+	if err != nil {
+		ts = time.Now()
+	}
+
+	h.mu.Lock()
+	for i := range h.sensors {
+		if h.sensors[i].ID == sensorID {
+			h.sensors[i].LatestValue = &payload.Value
+			h.sensors[i].LatestTimestamp = &ts
+			break
 		}
 	}
+	reading := models.SensorReading{
+		SensorID:  sensorID,
+		Value:     payload.Value,
+		Timestamp: ts,
+	}
+	h.readings[sensorID] = append(h.readings[sensorID], reading)
+	if len(h.readings[sensorID]) > 20000 {
+		h.readings[sensorID] = h.readings[sensorID][len(h.readings[sensorID])-20000:]
+	}
+	h.mu.Unlock()
+
+	h.broadcastReading(reading)
 }
 
 func (h *SensorsHandler) Stop() {
@@ -106,7 +204,7 @@ func (h *SensorsHandler) broadcastReading(r models.SensorReading) {
 }
 
 func (h *SensorsHandler) Subscribe() chan models.SensorReading {
-	ch := make(chan models.SensorReading, 100)
+	ch := make(chan models.SensorReading, 1000)
 	h.wsMu.Lock()
 	h.wsClients[ch] = true
 	h.wsMu.Unlock()
@@ -148,5 +246,32 @@ func (h *SensorsHandler) History(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode([]models.SensorReading{})
 		return
 	}
+	// Return downsampled: max 2000 points
+	if len(readings) > 2000 {
+		step := len(readings) / 2000
+		sampled := make([]models.SensorReading, 0, 2000)
+		for i := 0; i < len(readings); i += step {
+			sampled = append(sampled, readings[i])
+		}
+		if sampled[len(sampled)-1].ID != readings[len(readings)-1].ID {
+			sampled = append(sampled, readings[len(readings)-1])
+		}
+		json.NewEncoder(w).Encode(sampled)
+		return
+	}
 	json.NewEncoder(w).Encode(readings)
+}
+
+func (h *SensorsHandler) MQTTOnline() bool {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.mqttOnline
+}
+
+func (h *SensorsHandler) MQTTStatus(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"mqtt_online": h.MQTTOnline(),
+		"broker":      os.Getenv("MQTT_BROKER"),
+	})
 }

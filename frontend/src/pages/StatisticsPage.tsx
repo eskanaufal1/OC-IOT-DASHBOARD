@@ -9,28 +9,35 @@ import {
   ResponsiveContainer,
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Zap, Activity, Gauge } from "lucide-react"
-import { fetchSensors, fetchSensorHistory, type Sensor, type SensorReading } from "@/lib/api"
+import {
+  Zap, Activity, Gauge, Wifi, WifiOff,
+  TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight,
+  Cpu, Radio, Clock, BarChart3,
+} from "lucide-react"
+import { fetchSensors, fetchSensorHistory, fetchMQTTStatus, type Sensor, type SensorReading } from "@/lib/api"
 import { useTheme } from "@/lib/theme"
 import { getChartColors } from "@/hooks/useChartColors"
 
 const kpiIcons: Record<string, React.ElementType> = {
-  voltage: Zap,
-  amperage: Activity,
-  power: Gauge,
+  voltage: Zap, amperage: Activity, power: Gauge,
 }
 
 function computeStats(readings: SensorReading[]) {
-  if (readings.length === 0) return { avg: 0, min: 0, max: 0, latest: 0, count: 0 }
+  if (readings.length === 0) return { avg: 0, min: 0, max: 0, latest: 0, count: 0, stddev: 0, trend: 0 }
   const values = readings.map((r) => r.value)
+  const avg = values.reduce((a, b) => a + b, 0) / values.length
+  const variance = values.reduce((s, v) => s + (v - avg) ** 2, 0) / values.length
+  const latest = values[values.length - 1]
+  const oldest = values[0]
+  const trend = latest - oldest
   return {
-    avg: values.reduce((a, b) => a + b, 0) / values.length,
-    min: Math.min(...values),
-    max: Math.max(...values),
-    latest: values[values.length - 1],
-    count: values.length,
+    avg, min: Math.min(...values), max: Math.max(...values),
+    latest, count: values.length,
+    stddev: Math.sqrt(variance),
+    trend,
   }
 }
 
@@ -38,6 +45,8 @@ export default function StatisticsPage() {
   const [sensors, setSensors] = useState<Sensor[]>([])
   const [histories, setHistories] = useState<Record<number, SensorReading[]>>({})
   const [loading, setLoading] = useState(true)
+  const [mqttOnline, setMqttOnline] = useState(false)
+  const [mqttBroker, setMqttBroker] = useState("")
   const { theme } = useTheme()
   const isDark = theme === "dark"
   const c = getChartColors(isDark)
@@ -45,87 +54,177 @@ export default function StatisticsPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const sensorsData = await fetchSensors()
+        const [sensorsData, mqttData] = await Promise.all([
+          fetchSensors(),
+          fetchMQTTStatus().catch(() => ({ mqtt_online: false, broker: "" })),
+        ])
         setSensors(sensorsData)
+        setMqttOnline(mqttData.mqtt_online)
+        setMqttBroker(mqttData.broker || "")
         const historyMap: Record<number, SensorReading[]> = {}
         await Promise.all(
           sensorsData.map(async (s) => {
-            try {
-              historyMap[s.id] = await fetchSensorHistory(s.id)
-            } catch {
-              historyMap[s.id] = []
-            }
+            try { historyMap[s.id] = await fetchSensorHistory(s.id) }
+            catch { historyMap[s.id] = [] }
           })
         )
         setHistories(historyMap)
-      } catch {
-        // fail silently
-      } finally {
-        setLoading(false)
-      }
+      } catch { /* fail silently */ }
+      finally { setLoading(false) }
     }
     load()
+    const interval = setInterval(() => {
+      fetchMQTTStatus().then(d => { setMqttOnline(d.mqtt_online); setMqttBroker(d.broker || "") }).catch(() => {})
+    }, 15000)
+    return () => clearInterval(interval)
   }, [])
+
+  const getSensor = (name: string) => sensors.find((s) => s.name === name)
+  const v1 = getSensor("Voltage 1")?.latest_value
+  const v2 = getSensor("Voltage 2")?.latest_value
+  const a1 = getSensor("Current 1")?.latest_value
+  const a2 = getSensor("Current 2")?.latest_value
+  const p1 = getSensor("Power 1")?.latest_value
+  const p2 = getSensor("Power 2")?.latest_value
+  const totalPower = (p1 ?? 0) + (p2 ?? 0)
+  const totalCurrent = (a1 ?? 0) + (a2 ?? 0)
+  const totalReadings = sensors.reduce((s, sens) => s + (histories[sens.id]?.length ?? 0), 0)
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Statistics</h1>
         <p className="text-sm text-muted-foreground">
-          Historical sensor data with statistical analysis
+          Detailed sensor analytics and MQTT connection management
         </p>
       </div>
 
-      <Tabs defaultValue={sensors[0]?.id?.toString() || "all"} className="w-full">
+      {/* MQTT Status + System Summary */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">MQTT Broker</CardTitle>
+            {mqttOnline ? <Wifi className="h-4 w-4 text-success" /> : <WifiOff className="h-4 w-4 text-destructive" />}
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg font-bold">{mqttOnline ? "Connected" : "Offline"}</div>
+            <p className="text-xs text-muted-foreground">{mqttBroker || "localhost"}:1883</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Live Sensors</CardTitle>
+            <Radio className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg font-bold">{sensors.length} Active</div>
+            <p className="text-xs text-muted-foreground">Publishing every 60s</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Data Points</CardTitle>
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg font-bold">{totalReadings.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">Across {sensors.length} sensors</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Est. Monthly</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg font-bold">${totalPower > 0 ? ((totalPower / 1000) * 0.12 * 24 * 30).toFixed(0) : "--"}</div>
+            <p className="text-xs text-muted-foreground">{totalPower.toFixed(0)}W × $0.12/kWh</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Circuit Comparison */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {[
+          { label: "Circuit 1 (Primary)", v: v1, a: a1, p: p1, load: "~64%" },
+          { label: "Circuit 2 (Secondary)", v: v2, a: a2, p: p2, load: "~36%" },
+        ].map((circuit, idx) => (
+          <Card key={idx}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">{circuit.label}</CardTitle>
+              <div className="rounded-lg bg-primary/20 p-1.5 text-primary">
+                <Cpu className="h-4 w-4" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Voltage</span>
+                  <span className="font-mono font-bold">{circuit.v?.toFixed(1) ?? "--"} V</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Current</span>
+                  <span className="font-mono font-bold">{circuit.a?.toFixed(1) ?? "--"} A</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Power</span>
+                  <span className="font-mono font-bold">{circuit.p?.toFixed(0) ?? "--"} W</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Load share</span>
+                  <span className="font-mono font-bold">{circuit.load}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Sensor Detail Tabs */}
+      <Tabs defaultValue={sensors[0]?.id?.toString() || "all"}>
         <TabsList className="mb-4">
           <TabsTrigger value="all">All Sensors</TabsTrigger>
           {sensors.map((s) => (
-            <TabsTrigger key={s.id} value={s.id.toString()}>
-              {s.name}
-            </TabsTrigger>
+            <TabsTrigger key={s.id} value={s.id.toString()}>{s.name}</TabsTrigger>
           ))}
         </TabsList>
 
         <TabsContent value="all">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {sensors.map((sensor) => {
               const stats = computeStats(histories[sensor.id] || [])
-              return (
-                <SensorStatCard key={sensor.id} sensor={sensor} stats={stats} loading={loading} />
-              )
+              return <SensorStatCard key={sensor.id} sensor={sensor} stats={stats} loading={loading} />
             })}
           </div>
         </TabsContent>
 
-        {sensors.map((sensor) => {
-          const data = histories[sensor.id] || []
-          return (
-            <TabsContent key={sensor.id} value={sensor.id.toString()}>
-              <SensorChart sensor={sensor} data={data} loading={loading} c={c} />
-            </TabsContent>
-          )
-        })}
+        {sensors.map((sensor) => (
+          <TabsContent key={sensor.id} value={sensor.id.toString()}>
+            <SensorDetail sensor={sensor} data={histories[sensor.id] || []} loading={loading} c={c} />
+          </TabsContent>
+        ))}
       </Tabs>
     </div>
   )
 }
 
 function SensorStatCard({
-  sensor,
-  stats,
-  loading,
+  sensor, stats, loading,
 }: {
   sensor: Sensor
-  stats: { avg: number; min: number; max: number; latest: number; count: number }
+  stats: { avg: number; min: number; max: number; latest: number; count: number; stddev: number; trend: number }
   loading: boolean
 }) {
   const Icon = kpiIcons[sensor.type] || Activity
+  const isPositive = stats.trend > 0
+  const TrendIcon = isPositive ? ArrowUpRight : ArrowDownRight
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {sensor.name}
-        </CardTitle>
+        <CardTitle className="text-sm font-medium text-muted-foreground">{sensor.name}</CardTitle>
         <div className="rounded-lg bg-muted p-1.5 text-muted-foreground">
           <Icon className="h-4 w-4" />
         </div>
@@ -138,16 +237,27 @@ function SensorStatCard({
             <Skeleton className="h-4 w-24" />
           </div>
         ) : (
-          <div className="space-y-1 text-xs">
-            <div className="text-lg font-bold">
-              {stats.latest.toFixed(1)} <span className="text-sm font-normal text-muted-foreground">{sensor.unit}</span>
+          <div className="space-y-1.5 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-lg font-bold">
+                {stats.latest.toFixed(1)} <span className="text-sm font-normal text-muted-foreground">{sensor.unit}</span>
+              </span>
+              {stats.count > 1 && (
+                <span className="flex items-center gap-0.5 text-muted-foreground">
+                  <TrendIcon className="h-3 w-3" />
+                  {Math.abs(stats.trend).toFixed(1)}
+                </span>
+              )}
             </div>
             <div className="flex justify-between text-muted-foreground">
               <span>Avg: {stats.avg.toFixed(2)}</span>
+              <span>σ: {stats.stddev.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-muted-foreground">
               <span>Min: {stats.min.toFixed(1)}</span>
               <span>Max: {stats.max.toFixed(1)}</span>
             </div>
-            <div className="text-muted-foreground">{stats.count} readings</div>
+            <div className="text-muted-foreground">{stats.count.toLocaleString()} readings</div>
           </div>
         )}
       </CardContent>
@@ -155,11 +265,8 @@ function SensorStatCard({
   )
 }
 
-function SensorChart({
-  sensor,
-  data,
-  loading,
-  c,
+function SensorDetail({
+  sensor, data, loading, c,
 }: {
   sensor: Sensor
   data: SensorReading[]
@@ -167,17 +274,29 @@ function SensorChart({
   c: ReturnType<typeof getChartColors>
 }) {
   const stats = computeStats(data)
+  const oneDayAgo = Date.now() - 86400000
+  const last24h = data.filter((r) => new Date(r.timestamp).getTime() > oneDayAgo)
+  const dayStats = computeStats(last24h)
+
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-4">
-        <StatBadge label="Average" value={`${stats.avg.toFixed(2)} ${sensor.unit}`} />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatBadge label="Latest" value={`${stats.latest.toFixed(1)} ${sensor.unit}`} />
+        <StatBadge label="Avg (all)" value={`${stats.avg.toFixed(2)} ${sensor.unit}`} />
+        <StatBadge label="Std Dev" value={`σ ${stats.stddev.toFixed(2)} ${sensor.unit}`} />
+        <StatBadge label="Today" value={`${dayStats.avg.toFixed(1)} ${sensor.unit}`} />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatBadge label="Minimum" value={`${stats.min.toFixed(1)} ${sensor.unit}`} />
         <StatBadge label="Maximum" value={`${stats.max.toFixed(1)} ${sensor.unit}`} />
-        <StatBadge label="Samples" value={stats.count.toString()} />
+        <StatBadge label="Range" value={`${(stats.max - stats.min).toFixed(1)} ${sensor.unit}`} />
+        <StatBadge label="Samples" value={stats.count.toLocaleString()} />
       </div>
+
       <Card>
         <CardHeader>
-          <CardTitle>{sensor.name} — Over Time</CardTitle>
+          <CardTitle>{sensor.name} — 7-Day Trend</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -192,28 +311,13 @@ function SensorChart({
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
-                <XAxis
-                  dataKey="timestamp"
-                  tick={{ fill: c.axis, fontSize: 12 }}
-                  tickFormatter={(v) => new Date(v).toLocaleDateString()}
-                />
+                <XAxis dataKey="timestamp" tick={{ fill: c.axis, fontSize: 12 }}
+                  tickFormatter={(v) => new Date(v).toLocaleDateString()} />
                 <YAxis tick={{ fill: c.axis, fontSize: 12 }} />
                 <Tooltip
-                  contentStyle={{
-                    backgroundColor: c.tooltipBg,
-                    border: c.tooltipBorder,
-                    borderRadius: "8px",
-                    color: c.tooltipColor,
-                  }}
-                  labelFormatter={(v) => new Date(v).toLocaleString()}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#00a2ed"
-                  strokeWidth={2}
-                  fill={`url(#color${sensor.id})`}
-                />
+                  contentStyle={{ backgroundColor: c.tooltipBg, border: c.tooltipBorder, borderRadius: "8px", color: c.tooltipColor }}
+                  labelFormatter={(v) => new Date(v).toLocaleString()} />
+                <Area type="monotone" dataKey="value" stroke="#00a2ed" strokeWidth={2} fill={`url(#color${sensor.id})`} />
               </AreaChart>
             </ResponsiveContainer>
           )}

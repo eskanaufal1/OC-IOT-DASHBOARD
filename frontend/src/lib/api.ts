@@ -148,3 +148,7 @@ export async function fetchCurrentUser(): Promise<User> {
 export async function updateUserProfile(data: Partial<User>): Promise<User> {
   return apiFetch("/users/me", { method: "PUT", body: JSON.stringify(data) })
 }
+
+export async function fetchMQTTStatus(): Promise<{ mqtt_online: boolean; broker: string }> {
+  return apiFetch("/status/mqtt")
+}
