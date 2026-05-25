@@ -12,6 +12,7 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import rehypeRaw from "rehype-raw"
 import { fetchChatSessions, deleteChatSession, fetchChatHistory, sendChatQuery, fetchModels, switchModel, type ChatMessage, type ChatSession } from "@/lib/api"
+import { useLanguage } from "@/lib/language"
 import { toast } from "sonner"
 
 export interface ModelInfo {
@@ -33,6 +34,7 @@ export default function ChatbotPage() {
   const [modelStatus, setModelStatus] = useState<"loading" | "loaded" | "error">("loading")
   const [switching, setSwitching] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const { lang } = useLanguage()
 
   const loadSessions = async () => {
     try {
@@ -191,9 +193,9 @@ export default function ChatbotPage() {
   return (
     <div className="flex h-[calc(100vh-8rem)] flex-col space-y-4">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">AI Chatbot</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{lang === "id" ? "Chatbot AI" : "AI Chatbot"}</h1>
         <p className="text-sm text-muted-foreground">
-          Ask questions about your circuits — LangGraph + RAG-grounded responses
+          {lang === "id" ? "Tanyakan tentang sirkuit Anda — respons berbasis LangGraph + RAG" : "Ask about your circuits — LangGraph + RAG-grounded responses"}
         </p>
       </div>
 

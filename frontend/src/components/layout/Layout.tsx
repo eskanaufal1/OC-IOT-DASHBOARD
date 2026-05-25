@@ -25,13 +25,6 @@ import { clearToken } from "@/lib/api"
 import { useTheme } from "@/lib/theme"
 import { useLanguage, t } from "@/lib/language"
 
-const navItems = [
-  { to: "/", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/statistics", icon: BarChart3, label: "Statistics" },
-  { to: "/chatbot", icon: MessageSquare, label: "Chatbot" },
-  { to: "/profile", icon: User, label: "Profile" },
-]
-
 const SIDEBAR_EXPANDED = "w-56"
 const SIDEBAR_COLLAPSED = "w-14"
 const SIDEBAR_KEY = "sidebar-collapsed"
@@ -46,7 +39,7 @@ export default function Layout() {
   const navItems = [
     { to: "/", icon: LayoutDashboard, label: lang === "id" ? "Dashboard" : "Dashboard" },
     { to: "/statistics", icon: BarChart3, label: lang === "id" ? "Statistik" : "Statistics" },
-    { to: "/chatbot", icon: MessageSquare, label: lang === "id" ? "Chatbot" : "Chatbot" },
+    { to: "/chatbot", icon: MessageSquare, label: lang === "id" ? "Chatbot AI" : "AI Chatbot" },
     { to: "/profile", icon: User, label: lang === "id" ? "Profil" : "Profile" },
   ]
 
