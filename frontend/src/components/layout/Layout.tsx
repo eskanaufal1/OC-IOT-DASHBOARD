@@ -20,6 +20,7 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from "@/components/ui/tooltip"
+import ThreeBackground from "@/components/ThreeBackground"
 import { clearToken } from "@/lib/api"
 import { useTheme } from "@/lib/theme"
 
@@ -37,6 +38,7 @@ const SIDEBAR_KEY = "sidebar-collapsed"
 export default function Layout() {
   const navigate = useNavigate()
   const { theme, toggle: toggleTheme } = useTheme()
+  const isDark = theme === "dark" || theme === "light" ? theme !== "light" : true
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDEBAR_KEY) === "true")
 
   const toggle = () => {
@@ -53,12 +55,14 @@ export default function Layout() {
   return (
     <TooltipProvider delayDuration={200}>
       <div className="flex h-screen overflow-hidden bg-background">
+        <ThreeBackground isDark={isDark} />
+
         {/* Sidebar */}
         <aside
-          className={`${collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED} flex shrink-0 flex-col border-r border-border bg-card transition-all duration-200`}
+          className={`${collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED} relative z-10 flex shrink-0 flex-col border-r border-border bg-card/80 backdrop-blur-xl transition-all duration-200`}
         >
           <div className="flex h-14 items-center justify-center border-b border-border px-3">
-            <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#00a2ed] to-[#0077b6] text-primary-foreground shadow-[0_0_15px_rgba(0,162,237,0.4)]">
               <Cpu className="size-4" />
             </div>
             {!collapsed && (
@@ -120,8 +124,8 @@ export default function Layout() {
         </aside>
 
         {/* Main content */}
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-4">
+        <div className="relative z-10 flex flex-1 flex-col overflow-hidden">
+          <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-card/60 px-4 backdrop-blur-lg">
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={toggle}>
               {collapsed ? <PanelRight className="size-4" /> : <PanelLeft className="size-4" />}
             </Button>
@@ -130,7 +134,7 @@ export default function Layout() {
               AI-Powered IoT Monitoring
             </span>
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={toggleTheme}>
-              {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
+              {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
             </Button>
           </header>
           <main className="flex-1 overflow-auto p-4 md:p-6">

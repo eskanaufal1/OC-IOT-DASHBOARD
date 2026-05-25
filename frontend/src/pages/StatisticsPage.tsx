@@ -187,8 +187,8 @@ function SensorChart({
               <AreaChart data={data}>
                 <defs>
                   <linearGradient id={`color${sensor.id}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0070d1" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#0070d1" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#00a2ed" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#00a2ed" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
@@ -210,7 +210,7 @@ function SensorChart({
                 <Area
                   type="monotone"
                   dataKey="value"
-                  stroke="#0070d1"
+                  stroke="#00a2ed"
                   strokeWidth={2}
                   fill={`url(#color${sensor.id})`}
                 />
