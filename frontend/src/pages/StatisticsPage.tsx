@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Zap, Activity, Gauge, Wifi, WifiOff,
   TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight,
-  Cpu, Radio, Clock, BarChart3, Power, PowerOff,
+  Cpu, Radio, BarChart3, Power, PowerOff,
   RefreshCw, ScrollText,
 } from "lucide-react"
 import { fetchSensors, fetchSensorHistory, fetchMQTTStatus, mqttConnect, mqttDisconnect, type Sensor, type SensorReading } from "@/lib/api"
@@ -113,37 +113,37 @@ export default function StatisticsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Statistics</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Statistik</h1>
         <p className="text-sm text-muted-foreground">
-          Detailed sensor analytics and MQTT connection management
+          Analisis sensor detail dan manajemen koneksi MQTT
         </p>
       </div>
 
       {/* MQTT Status + System Summary */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">MQTT Broker</CardTitle>
             {mqttOnline ? <Wifi className="h-4 w-4 text-success" /> : <WifiOff className="h-4 w-4 text-destructive" />}
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold">{mqttOnline ? "Connected" : "Offline"}</div>
+            <div className="text-lg font-bold">{mqttOnline ? "Terhubung" : "Offline"}</div>
             <p className="text-xs text-muted-foreground">{mqttBroker || "localhost"}:1883</p>
             <div className="mt-3 flex gap-2">
               {mqttOnline ? (
                 <button onClick={handleMqttDisconnect} disabled={mqttLoading}
                   className="flex items-center gap-1 rounded-md bg-destructive/20 px-2 py-1 text-xs text-destructive hover:bg-destructive/30 cursor-pointer">
-                  <PowerOff className="h-3 w-3" /> Disconnect
+                  <PowerOff className="h-3 w-3" /> Putuskan
                 </button>
               ) : (
                 <button onClick={handleMqttConnect} disabled={mqttLoading}
                   className="flex items-center gap-1 rounded-md bg-success/20 px-2 py-1 text-xs text-success hover:bg-success/30 cursor-pointer">
-                  <Power className="h-3 w-3" /> Connect
+                  <Power className="h-3 w-3" /> Hubungkan
                 </button>
               )}
               <button onClick={handleMqttConnect} disabled={mqttLoading}
                 className="flex items-center gap-1 rounded-md bg-accent px-2 py-1 text-xs text-accent-foreground hover:bg-accent/70 cursor-pointer">
-                <RefreshCw className={`h-3 w-3 ${mqttLoading ? "animate-spin" : ""}`} /> Reconnect
+                <RefreshCw className={`h-3 w-3 ${mqttLoading ? "animate-spin" : ""}`} /> Ulang
               </button>
             </div>
           </CardContent>
@@ -151,43 +151,33 @@ export default function StatisticsPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Live Sensors</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Sensor Aktif</CardTitle>
             <Radio className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold">{sensors.length} Active</div>
-            <p className="text-xs text-muted-foreground">Publishing every 60s</p>
+            <div className="text-lg font-bold">{sensors.length} Aktif</div>
+            <p className="text-xs text-muted-foreground">Mengirim setiap 60 detik</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Data Points</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Data</CardTitle>
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-lg font-bold">{totalReadings.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Across {sensors.length} sensors</p>
+            <p className="text-xs text-muted-foreground">Di {sensors.length} sensor</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Est. Monthly</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg font-bold">${totalPower > 0 ? ((totalPower / 1000) * 0.12 * 24 * 30).toFixed(0) : "--"}</div>
-            <p className="text-xs text-muted-foreground">{totalPower.toFixed(0)}W × $0.12/kWh</p>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Circuit Comparison */}
       <div className="grid gap-4 md:grid-cols-2">
         {[
-          { label: "Circuit 1 (Primary)", v: v1, a: a1, p: p1, load: "~64%" },
-          { label: "Circuit 2 (Secondary)", v: v2, a: a2, p: p2, load: "~36%" },
+          { label: "Sirkuit 1 (Utama)", v: v1, a: a1, p: p1, load: "~64%" },
+          { label: "Sirkuit 2 (Kedua)", v: v2, a: a2, p: p2, load: "~36%" },
         ].map((circuit, idx) => (
           <Card key={idx}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -199,19 +189,19 @@ export default function StatisticsPage() {
             <CardContent>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Voltage</span>
+                  <span className="text-muted-foreground">Tegangan</span>
                   <span className="font-mono font-bold">{circuit.v?.toFixed(1) ?? "--"} V</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Current</span>
+                  <span className="text-muted-foreground">Arus</span>
                   <span className="font-mono font-bold">{circuit.a?.toFixed(1) ?? "--"} A</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Power</span>
+                  <span className="text-muted-foreground">Daya</span>
                   <span className="font-mono font-bold">{circuit.p?.toFixed(0) ?? "--"} W</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Load share</span>
+                  <span className="text-muted-foreground">Beban</span>
                   <span className="font-mono font-bold">{circuit.load}</span>
                 </div>
               </div>
@@ -222,8 +212,8 @@ export default function StatisticsPage() {
 
       {/* Live MQTT Messages */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Live MQTT Messages</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 py-3">
+          <CardTitle className="text-sm font-medium">Pesan MQTT Langsung</CardTitle>
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="gap-1 text-xs">
               <ScrollText className="h-3 w-3" />
@@ -237,17 +227,17 @@ export default function StatisticsPage() {
             )}
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-0">
           {recentMsgs.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No messages yet — MQTT may be offline</p>
+            <p className="text-xs text-muted-foreground text-center py-2">Belum ada pesan — MQTT mungkin offline</p>
           ) : (
-            <div className="max-h-[300px] overflow-y-auto space-y-1 font-mono text-xs">
+            <div className="max-h-[240px] overflow-y-auto font-mono text-[11px]">
               {[...recentMsgs].reverse().map((msg, i) => (
-                <div key={i} className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-muted/50">
-                  <span className="shrink-0 text-muted-foreground w-[110px]">
+                <div key={i} className="flex items-center gap-2 rounded px-1.5 py-0.5 hover:bg-muted/50">
+                  <span className="shrink-0 text-muted-foreground w-[95px]">
                     {new Date(msg.timestamp).toLocaleTimeString()}
                   </span>
-                  <span className="shrink-0 w-[80px] font-semibold text-foreground">
+                  <span className="shrink-0 w-[75px] font-semibold text-foreground">
                     {msg.sensor}
                   </span>
                   <span className="font-bold text-primary">
@@ -264,7 +254,7 @@ export default function StatisticsPage() {
       {/* Sensor Detail Tabs */}
       <Tabs defaultValue={sensors[0]?.id?.toString() || "all"}>
         <TabsList className="mb-4">
-          <TabsTrigger value="all">All Sensors</TabsTrigger>
+          <TabsTrigger value="all">Semua Sensor</TabsTrigger>
           {sensors.map((s) => (
             <TabsTrigger key={s.id} value={s.id.toString()}>{s.name}</TabsTrigger>
           ))}
@@ -328,14 +318,14 @@ function SensorStatCard({
               )}
             </div>
             <div className="flex justify-between text-muted-foreground">
-              <span>Avg: {stats.avg.toFixed(2)}</span>
+              <span>Rata: {stats.avg.toFixed(2)}</span>
               <span>σ: {stats.stddev.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-muted-foreground">
               <span>Min: {stats.min.toFixed(1)}</span>
-              <span>Max: {stats.max.toFixed(1)}</span>
+              <span>Maks: {stats.max.toFixed(1)}</span>
             </div>
-            <div className="text-muted-foreground">{stats.count.toLocaleString()} readings</div>
+            <div className="text-muted-foreground">{stats.count.toLocaleString()} data</div>
           </div>
         )}
       </CardContent>
@@ -359,22 +349,22 @@ function SensorDetail({
   return (
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatBadge label="Latest" value={`${stats.latest.toFixed(1)} ${sensor.unit}`} />
-        <StatBadge label="Avg (all)" value={`${stats.avg.toFixed(2)} ${sensor.unit}`} />
-        <StatBadge label="Std Dev" value={`σ ${stats.stddev.toFixed(2)} ${sensor.unit}`} />
-        <StatBadge label="Today" value={`${dayStats.avg.toFixed(1)} ${sensor.unit}`} />
+        <StatBadge label="Terbaru" value={`${stats.latest.toFixed(1)} ${sensor.unit}`} />
+        <StatBadge label="Rata (semua)" value={`${stats.avg.toFixed(2)} ${sensor.unit}`} />
+        <StatBadge label="Simpangan" value={`σ ${stats.stddev.toFixed(2)} ${sensor.unit}`} />
+        <StatBadge label="Hari ini" value={`${dayStats.avg.toFixed(1)} ${sensor.unit}`} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatBadge label="Minimum" value={`${stats.min.toFixed(1)} ${sensor.unit}`} />
-        <StatBadge label="Maximum" value={`${stats.max.toFixed(1)} ${sensor.unit}`} />
-        <StatBadge label="Range" value={`${(stats.max - stats.min).toFixed(1)} ${sensor.unit}`} />
-        <StatBadge label="Samples" value={stats.count.toLocaleString()} />
+        <StatBadge label="Maksimum" value={`${stats.max.toFixed(1)} ${sensor.unit}`} />
+        <StatBadge label="Rentang" value={`${(stats.max - stats.min).toFixed(1)} ${sensor.unit}`} />
+        <StatBadge label="Sampel" value={stats.count.toLocaleString()} />
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>{sensor.name} — 7-Day Trend</CardTitle>
+          <CardTitle>{sensor.name} — Tren 7 Hari</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
