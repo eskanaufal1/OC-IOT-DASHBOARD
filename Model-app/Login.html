@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login • IoT Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        :root {
+            --bg: linear-gradient(135deg, #0a0a1f 0%, #1a1a2e 100%);
+            --text: #ffffff;
+            --accent: #00a2ed;
+            --card-bg: rgba(255,255,255,0.07);
+            --border: rgba(0,162,237,0.2);
+        }
+
+        .light {
+            --bg: linear-gradient(135deg, #f1f5f9 0%, #e0f2fe 100%);
+            --text: #0a0a1f;
+            --accent: #0077b6;
+            --card-bg: rgba(255,255,255,0.92);
+            --border: rgba(0,119,182,0.2);
+        }
+
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+            color: var(--text);
+            transition: background 0.6s ease;
+        }
+
+        #three-bg { position:fixed; top:0; left:0; width:100%; height:100%; z-index:-1; }
+
+        .glass {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 28px;
+            box-shadow: 0 30px 60px -15px rgb(0 162 237 / 0.3);
+        }
+
+        .card { width:100%; max-width:420px; padding:48px 36px; position:relative; }
+
+        .header-buttons {
+            position:absolute; top:24px; right:24px; z-index:10;
+        }
+
+        .toggle-btn {
+            width:44px; height:44px;
+            background:rgba(255,255,255,0.12);
+            border:none; border-radius:50%;
+            color:var(--text); font-size:21px;
+            display:flex; align-items:center; justify-content:center;
+            cursor:pointer; transition:all 0.3s;
+        }
+
+        .toggle-btn:hover { background:rgba(255,255,255,0.25); transform:scale(1.08); }
+
+        .logo { display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom:36px; }
+        .logo div { 
+            width:52px; height:52px; 
+            background:linear-gradient(135deg, #00a2ed, #0077b6); 
+            border-radius:18px; 
+            display:flex; align-items:center; justify-content:center; 
+            font-size:30px; box-shadow:0 0 25px #00a2ed;
+        }
+
+        .input-group { position:relative; margin-bottom:22px; }
+        .input-group input {
+            width:100%; padding:18px 20px 18px 56px;
+            background:rgba(255,255,255,0.08); 
+            border:1px solid rgba(255,255,255,0.15);
+            border-radius:18px; color:var(--text); font-size:17px;
+        }
+        .input-group input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 4px rgba(0,162,237,0.15); }
+
+        .input-group i { position:absolute; left:22px; top:50%; transform:translateY(-50%); color:#94a3b8; }
+
+        button.primary {
+            width:100%; padding:18px; 
+            background:linear-gradient(to right, #00a2ed, #0077b6);
+            color:white; border:none; border-radius:18px; font-size:18px; font-weight:700;
+            margin-top:10px; cursor:pointer; letter-spacing:0.5px;
+        }
+
+        button.secondary {
+            width:100%; padding:18px; background:transparent; 
+            border:2px solid rgba(0,162,237,0.4);
+            color:var(--text); border-radius:18px; font-size:18px; font-weight:600; margin-top:14px;
+        }
+
+        .divider { display:flex; align-items:center; gap:14px; margin:36px 0 24px; color:#64748b; font-size:13px; font-weight:500; }
+        .divider::before, .divider::after { content:''; flex:1; height:1px; background:rgba(255,255,255,0.15); }
+    </style>
+</head>
+<body>
+
+    <!-- Three.js Background -->
+    <canvas id="three-bg"></canvas>
+
+    <!-- Login Card -->
+    <div class="glass card">
+
+        <!-- Theme Toggle -->
+        <div class="header-buttons">
+            <button id="themeToggle" class="toggle-btn" title="Toggle Dark/Light Mode">
+                <i class="fas fa-sun"></i>
+            </button>
+        </div>
+
+        <div class="logo">
+            <div>📡</div>
+            <h1 style="font-size:36px; font-weight:800; letter-spacing:-2px; text-shadow:0 0 20px #00a2ed;">NEXUS</h1>
+        </div>
+
+        <h2 style="text-align:center; font-size:28px; font-weight:700; margin-bottom:10px;">Welcome back</h2>
+        <p style="text-align:center; color:#94a3b8; margin-bottom:36px;">Sign in to your IoT dashboard</p>
+
+        <form id="loginForm">
+            <div class="input-group">
+                <i class="fas fa-envelope"></i>
+                <input type="text" id="email" value="demo@nexus.com" placeholder="admin@nexus.com">
+            </div>
+            <div class="input-group">
+                <i class="fas fa-lock"></i>
+                <input type="password" id="password" placeholder="••••••••">
+                <button type="button" id="togglePassword" style="position:absolute;right:22px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;cursor:pointer;">
+                    <i class="fas fa-eye"></i>
+                </button>
+            </div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;margin-bottom:28px;">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                    <input type="checkbox" checked> Remember me
+                </label>
+                <a href="#" style="color:#00a2ed;text-decoration:none;">Forgot password?</a>
+            </div>
+
+            <button type="submit" class="primary">Sign In</button>
+            <button type="button" onclick="showSignup()" class="secondary">Create new account</button>
+        </form>
+
+        <div class="divider">OR</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <button onclick="demoSSO('Google')" style="padding:16px;border-radius:18px;border:2px solid rgba(0,162,237,0.35);background:transparent;display:flex;align-items:center;justify-content:center;gap:10px;color:var(--text);font-weight:600;">
+                <i class="fab fa-google"></i> Google
+            </button>
+            <button onclick="demoSSO('Microsoft')" style="padding:16px;border-radius:18px;border:2px solid rgba(0,162,237,0.35);background:transparent;display:flex;align-items:center;justify-content:center;gap:10px;color:var(--text);font-weight:600;">
+                <i class="fab fa-microsoft"></i> Microsoft
+            </button>
+        </div>
+
+        <p style="text-align:center;font-size:13px;color:#64748b;margin-top:40px;">© 2026 Nexus IoT • Secure Access</p>
+    </div>
+
+    <script>
+        // ==================== THREE.JS (PlayStation blue tones) ====================
+        let scene, camera, renderer, particles, lines;
+
+        function initThree() {
+            const canvas = document.getElementById('three-bg');
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({canvas, alpha:true, antialias:true});
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            const count = 280;
+            const positions = new Float32Array(count * 3);
+            const colors = new Float32Array(count * 3);
+
+            for (let i = 0; i < count*3; i += 3) {
+                positions[i] = (Math.random()-0.5)*48;
+                positions[i+1] = (Math.random()-0.5)*48;
+                positions[i+2] = (Math.random()-0.5)*48;
+                colors[i] = 0; colors[i+1] = 0.65; colors[i+2] = 0.93; // PlayStation blue
+            }
+
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            particles = new THREE.Points(geo, new THREE.PointsMaterial({size:0.14, vertexColors:true, transparent:true, opacity:0.95, blending:THREE.AdditiveBlending}));
+            scene.add(particles);
+
+            lines = new THREE.LineSegments();
+            scene.add(lines);
+            camera.position.z = 30;
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animateThree();
+        }
+
+        function animateThree() {
+            requestAnimationFrame(animateThree);
+            const pos = particles.geometry.attributes.position.array;
+            for (let i = 0; i < pos.length; i += 3) {
+                pos[i] += Math.sin(Date.now()*0.001 + i)*0.009;
+                pos[i+1] += Math.cos(Date.now()*0.001 + i)*0.009;
+            }
+            particles.geometry.attributes.position.needsUpdate = true;
+
+            const linePos = [];
+            for (let i = 0; i < pos.length; i += 3) {
+                for (let j = i + 3; j < pos.length; j += 3) {
+                    const dx = pos[i]-pos[j], dy = pos[i+1]-pos[j+1], dz = pos[i+2]-pos[j+2];
+                    if (Math.sqrt(dx*dx + dy*dy + dz*dz) < 6) {
+                        linePos.push(pos[i],pos[i+1],pos[i+2], pos[j],pos[j+1],pos[j+2]);
+                    }
+                }
+            }
+            const lineGeo = new THREE.BufferGeometry();
+            lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(linePos, 3));
+            lines.geometry.dispose();
+            lines.geometry = lineGeo;
+            lines.material = new THREE.LineBasicMaterial({color:0x00a2ed, transparent:true, opacity:0.18});
+
+            renderer.render(scene, camera);
+        }
+
+        // ==================== Theme Toggle ====================
+        function toggleTheme() {
+            document.body.classList.toggle('light');
+            const icon = document.getElementById('themeToggle').querySelector('i');
+            icon.classList.toggle('fa-sun');
+            icon.classList.toggle('fa-moon');
+        }
+
+        // ==================== Login Functionality ====================
+        document.getElementById('togglePassword').addEventListener('click', () => {
+            const pwd = document.getElementById('password');
+            const icon = document.querySelector('#togglePassword i');
+            if (pwd.type === 'password') {
+                pwd.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                pwd.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        });
+
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const btn = this.querySelector('button[type="submit"]');
+            const original = btn.innerHTML;
+            btn.innerHTML = 'Signing in...';
+            btn.disabled = true;
+            setTimeout(() => {
+                alert('✅ Login successful! Welcome to your IoT Dashboard.');
+                btn.innerHTML = original;
+                btn.disabled = false;
+            }, 1400);
+        });
+
+        function showSignup() {
+            alert("📋 Sign-up flow would open here.\n\n(This is a demo.)");
+        }
+
+        function demoSSO(provider) {
+            alert(`🔗 ${provider} login simulation (demo)`);
+        }
+
+        // Initialize
+        window.onload = () => {
+            initThree();
+            document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+        };
+    </script>
+</body>
+</html>

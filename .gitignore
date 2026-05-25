@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+backend-python/venv/
+*.pyc
+__pycache__/
+
+# Models (large binary files)
+backend-python/models/*.gguf
+
+# Database
+backend-python/data/
+
+# ChromaDB vector store
+backend-python/chroma_data/
+
+# Environment
+.env
+.env.local
+
+# Build artifacts
+backend-go/iot-backend.exe
+frontend/dist/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# PM2
+.pm2/
+*.log
+
+# Python cache
+*.egg-info/
