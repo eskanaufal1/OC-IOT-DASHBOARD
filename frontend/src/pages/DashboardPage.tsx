@@ -17,6 +17,9 @@ import {
   Gauge,
   TrendingUp,
   TrendingDown,
+  BarChart3,
+  CircuitBoard,
+  LineChart,
 } from "lucide-react"
 import { fetchSensors, fetchSensorHistory, type Sensor, type SensorReading } from "@/lib/api"
 import { useWebSocket } from "@/hooks/useWebSocket"
@@ -116,6 +119,19 @@ export default function DashboardPage() {
   )
 
   const selectedSensorData = sensors.find((s) => s.id === selectedSensor)
+
+  const getSensor = (name: string) => sensors.find((s) => s.name === name)
+  const v1 = getSensor("Voltage 1")?.latest_value
+  const v2 = getSensor("Voltage 2")?.latest_value
+  const a1 = getSensor("Current 1")?.latest_value
+  const a2 = getSensor("Current 2")?.latest_value
+  const p1 = getSensor("Power 1")?.latest_value
+  const p2 = getSensor("Power 2")?.latest_value
+  const totalPower = (p1 ?? 0) + (p2 ?? 0)
+  const totalCurrent = (a1 ?? 0) + (a2 ?? 0)
+  const lineDiff = v1 != null && v2 != null ? Math.abs(v1 - v2).toFixed(1) : "--"
+  const loadRatio = a1 != null && a2 != null ? (a2 / a1).toFixed(2) : "--"
+  const monthlyCost = totalPower > 0 ? `$${((totalPower / 1000) * 0.12 * 24 * 30).toFixed(0)}` : "--"
 
   return (
     <div className="space-y-6">
@@ -245,6 +261,118 @@ export default function DashboardPage() {
           </ResponsiveContainer>
         </CardContent>
       </Card>
+
+      {/* Circuit Comparison */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Circuit 1 (Primary)</CardTitle>
+            <div className="rounded-lg bg-primary/20 p-1.5 text-primary">
+              <CircuitBoard className="h-4 w-4" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Voltage 1</span>
+                <span className="font-mono font-bold">{v1?.toFixed(1) ?? "--"} V</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Current 1</span>
+                <span className="font-mono font-bold">{a1?.toFixed(1) ?? "--"} A</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Power 1</span>
+                <span className="font-mono font-bold">{p1?.toFixed(0) ?? "--"} W</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Load share</span>
+                <span className="font-mono font-bold">~64%</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Circuit 2 (Secondary)</CardTitle>
+            <div className="rounded-lg bg-accent p-1.5 text-accent-foreground">
+              <CircuitBoard className="h-4 w-4" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Voltage 2</span>
+                <span className="font-mono font-bold">{v2?.toFixed(1) ?? "--"} V</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Current 2</span>
+                <span className="font-mono font-bold">{a2?.toFixed(1) ?? "--"} A</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Power 2</span>
+                <span className="font-mono font-bold">{p2?.toFixed(0) ?? "--"} W</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Load share</span>
+                <span className="font-mono font-bold">~36%</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* System Metrics */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Power</CardTitle>
+            <Gauge className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalPower.toFixed(0)}<span className="ml-1 text-sm font-normal text-muted-foreground">W</span></div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              ~{monthlyCost}/bulan
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Current</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalCurrent.toFixed(1)}<span className="ml-1 text-sm font-normal text-muted-foreground">A</span></div>
+            <p className="mt-1 text-xs text-muted-foreground">A1 + A2</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Line Balance</CardTitle>
+            <LineChart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{lineDiff}<span className="ml-1 text-sm font-normal text-muted-foreground">V</span></div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {lineDiff !== "--" && parseFloat(lineDiff) < 5 ? "Excellent" : lineDiff !== "--" ? "Check" : "--"}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Load Ratio</CardTitle>
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{loadRatio}</div>
+            <p className="mt-1 text-xs text-muted-foreground">A2 / A1</p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

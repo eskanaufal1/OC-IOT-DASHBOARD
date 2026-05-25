@@ -59,7 +59,7 @@ export default function Layout() {
 
         {/* Sidebar */}
         <aside
-          className={`${collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED} relative z-10 flex shrink-0 flex-col border-r border-border bg-card/80 backdrop-blur-xl transition-all duration-200`}
+          className={`${collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED} relative z-10 flex shrink-0 flex-col border-r border-border bg-card transition-all duration-200`}
         >
           <div className="flex h-14 items-center justify-center border-b border-border px-3">
             <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#00a2ed] to-[#0077b6] text-primary-foreground shadow-[0_0_15px_rgba(0,162,237,0.4)]">
@@ -125,7 +125,7 @@ export default function Layout() {
 
         {/* Main content */}
         <div className="relative z-10 flex flex-1 flex-col overflow-hidden">
-          <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-card/60 px-4 backdrop-blur-lg">
+          <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-card px-4">
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={toggle}>
               {collapsed ? <PanelRight className="size-4" /> : <PanelLeft className="size-4" />}
             </Button>

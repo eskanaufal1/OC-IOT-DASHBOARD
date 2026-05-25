@@ -3,22 +3,22 @@
 @theme {
   --color-background: #0a0a1f;
   --color-foreground: #ffffff;
-  --color-card: rgba(255, 255, 255, 0.05);
+  --color-card: #12122a;
   --color-card-foreground: #e5e5e5;
   --color-primary: #00a2ed;
   --color-primary-foreground: #ffffff;
-  --color-secondary: rgba(255, 255, 255, 0.08);
+  --color-secondary: #1a1a35;
   --color-secondary-foreground: #e5e5e5;
-  --color-muted: rgba(255, 255, 255, 0.06);
+  --color-muted: #1a1a35;
   --color-muted-foreground: #94a3b8;
-  --color-accent: rgba(0, 162, 237, 0.15);
+  --color-accent: rgba(0, 162, 237, 0.20);
   --color-accent-foreground: #ffffff;
   --color-destructive: #c81b3a;
   --color-destructive-foreground: #ffffff;
   --color-success: #22c55e;
   --color-warning: #f59e0b;
   --color-border: rgba(0, 162, 237, 0.15);
-  --color-input: rgba(255, 255, 255, 0.08);
+  --color-input: #1a1a35;
   --color-ring: #00a2ed;
   --radius: 0.625rem;
   --radius-sm: 0.375rem;
@@ -32,30 +32,30 @@
 [data-theme="dark"] {
   --color-background: #0a0a1f;
   --color-foreground: #ffffff;
-  --color-card: rgba(255, 255, 255, 0.05);
+  --color-card: #12122a;
   --color-card-foreground: #e5e5e5;
-  --color-secondary: rgba(255, 255, 255, 0.08);
+  --color-secondary: #1a1a35;
   --color-secondary-foreground: #e5e5e5;
-  --color-muted: rgba(255, 255, 255, 0.06);
+  --color-muted: #1a1a35;
   --color-muted-foreground: #94a3b8;
-  --color-accent: rgba(0, 162, 237, 0.15);
+  --color-accent: rgba(0, 162, 237, 0.20);
   --color-accent-foreground: #ffffff;
   --color-border: rgba(0, 162, 237, 0.15);
-  --color-input: rgba(255, 255, 255, 0.08);
+  --color-input: #1a1a35;
 }
 
 [data-theme="light"] {
   --color-background: #e2e8f0;
   --color-foreground: #0a0a1f;
-  --color-card: rgba(255, 255, 255, 0.90);
+  --color-card: #ffffff;
   --color-card-foreground: #0a0a1f;
-  --color-secondary: #e2e8f0;
+  --color-secondary: #f1f5f9;
   --color-secondary-foreground: #1e293b;
   --color-muted: #f1f5f9;
   --color-muted-foreground: #64748b;
   --color-accent: rgba(0, 119, 182, 0.12);
   --color-accent-foreground: #0a0a1f;
-  --color-border: rgba(0, 119, 182, 0.2);
+  --color-border: rgba(0, 119, 182, 0.20);
   --color-input: #f8fafc;
 }
 
