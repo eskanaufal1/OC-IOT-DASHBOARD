@@ -17,13 +17,17 @@ import (
 )
 
 type SensorsHandler struct {
-	mu        sync.RWMutex
-	sensors   []models.Sensor
-	readings  map[int][]models.SensorReading
-	wsClients map[chan models.SensorReading]bool
-	wsMu      sync.RWMutex
-	done      chan struct{}
+	mu         sync.RWMutex
+	sensors    []models.Sensor
+	readings   map[int][]models.SensorReading
+	wsClients  map[chan models.SensorReading]bool
+	wsMu       sync.RWMutex
+	done       chan struct{}
 	mqttOnline bool
+	mqttClient mqtt.Client
+	mqttBroker string
+	recentMsgs []mqttPayload
+	msgMu      sync.Mutex
 }
 
 type mqttPayload struct {
@@ -115,18 +119,20 @@ func (h *SensorsHandler) connectMQTT() {
 	if port == "" {
 		port = "1883"
 	}
+	h.mu.Lock()
+	h.mqttBroker = broker + ":" + port
+	h.mu.Unlock()
 
 	opts := mqtt.NewClientOptions().
 		AddBroker("tcp://" + broker + ":" + port).
 		SetClientID("iot-go-backend").
-		SetAutoReconnect(true).
-		SetConnectRetry(true).
+		SetAutoReconnect(false).
 		SetKeepAlive(30 * time.Second).
 		SetOnConnectHandler(func(c mqtt.Client) {
 			h.mu.Lock()
 			h.mqttOnline = true
 			h.mu.Unlock()
-			log.Printf("[MQTT] Connected to %s:%s — subscribing sensors/#", broker, port)
+			log.Printf("[MQTT] Connected to %s:%s", broker, port)
 			c.Subscribe("sensors/#", 1, h.onMQTTMessage)
 		}).
 		SetConnectionLostHandler(func(c mqtt.Client, err error) {
@@ -137,16 +143,30 @@ func (h *SensorsHandler) connectMQTT() {
 		})
 
 	client := mqtt.NewClient(opts)
+	h.mqttClient = client
 	token := client.Connect()
-	if token.Wait() && token.Error() != nil {
-		log.Printf("[MQTT] Failed to connect: %v — sensors will show last known data", token.Error())
+	if token.WaitTimeout(5*time.Second) && token.Error() != nil {
+		log.Printf("[MQTT] Failed to connect: %v", token.Error())
 		h.mu.Lock()
 		h.mqttOnline = false
 		h.mu.Unlock()
 		return
 	}
+}
 
-	select {}
+func (h *SensorsHandler) DisconnectMQTT() {
+	if h.mqttClient != nil && h.mqttClient.IsConnected() {
+		h.mqttClient.Disconnect(500)
+		h.mu.Lock()
+		h.mqttOnline = false
+		h.mu.Unlock()
+		log.Printf("[MQTT] Disconnected")
+	}
+}
+
+func (h *SensorsHandler) ReconnectMQTT() {
+	h.DisconnectMQTT()
+	go h.connectMQTT()
 }
 
 func (h *SensorsHandler) onMQTTMessage(_ mqtt.Client, msg mqtt.Message) {
@@ -155,6 +175,13 @@ func (h *SensorsHandler) onMQTTMessage(_ mqtt.Client, msg mqtt.Message) {
 		log.Printf("[MQTT] Bad payload: %v", err)
 		return
 	}
+
+	h.msgMu.Lock()
+	h.recentMsgs = append(h.recentMsgs, payload)
+	if len(h.recentMsgs) > 50 {
+		h.recentMsgs = h.recentMsgs[len(h.recentMsgs)-50:]
+	}
+	h.msgMu.Unlock()
 
 	sensorID, ok := sensorNameToID[payload.Sensor]
 	if !ok {
@@ -270,8 +297,31 @@ func (h *SensorsHandler) MQTTOnline() bool {
 
 func (h *SensorsHandler) MQTTStatus(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	h.msgMu.Lock()
+	msgs := make([]mqttPayload, len(h.recentMsgs))
+	copy(msgs, h.recentMsgs)
+	h.msgMu.Unlock()
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"mqtt_online": h.MQTTOnline(),
-		"broker":      os.Getenv("MQTT_BROKER"),
+		"broker":      h.mqttBroker,
+		"recent":      msgs,
+	})
+}
+
+func (h *SensorsHandler) MQTTConnect(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	h.ReconnectMQTT()
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"mqtt_online": h.MQTTOnline(),
+		"status":      "reconnecting",
+	})
+}
+
+func (h *SensorsHandler) MQTTDisconnect(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	h.DisconnectMQTT()
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"mqtt_online": false,
+		"status":      "disconnected",
 	})
 }

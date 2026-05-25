@@ -149,6 +149,14 @@ export async function updateUserProfile(data: Partial<User>): Promise<User> {
   return apiFetch("/users/me", { method: "PUT", body: JSON.stringify(data) })
 }
 
-export async function fetchMQTTStatus(): Promise<{ mqtt_online: boolean; broker: string }> {
+export async function fetchMQTTStatus(): Promise<{ mqtt_online: boolean; broker: string; recent?: Array<{ sensor: string; value: number; unit: string; timestamp: string }> }> {
   return apiFetch("/status/mqtt")
+}
+
+export async function mqttConnect(): Promise<{ mqtt_online: boolean }> {
+  return apiFetch("/status/mqtt/connect", { method: "POST" })
+}
+
+export async function mqttDisconnect(): Promise<{ mqtt_online: boolean }> {
+  return apiFetch("/status/mqtt/disconnect", { method: "POST" })
 }

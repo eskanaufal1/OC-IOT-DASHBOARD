@@ -15,9 +15,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Zap, Activity, Gauge, Wifi, WifiOff,
   TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight,
-  Cpu, Radio, Clock, BarChart3,
+  Cpu, Radio, Clock, BarChart3, Power, PowerOff,
+  RefreshCw, ScrollText,
 } from "lucide-react"
-import { fetchSensors, fetchSensorHistory, fetchMQTTStatus, type Sensor, type SensorReading } from "@/lib/api"
+import { fetchSensors, fetchSensorHistory, fetchMQTTStatus, mqttConnect, mqttDisconnect, type Sensor, type SensorReading } from "@/lib/api"
 import { useTheme } from "@/lib/theme"
 import { getChartColors } from "@/hooks/useChartColors"
 
@@ -47,6 +48,8 @@ export default function StatisticsPage() {
   const [loading, setLoading] = useState(true)
   const [mqttOnline, setMqttOnline] = useState(false)
   const [mqttBroker, setMqttBroker] = useState("")
+  const [recentMsgs, setRecentMsgs] = useState<Array<{ sensor: string; value: number; unit: string; timestamp: string }>>([])
+  const [mqttLoading, setMqttLoading] = useState(false)
   const { theme } = useTheme()
   const isDark = theme === "dark"
   const c = getChartColors(isDark)
@@ -61,6 +64,7 @@ export default function StatisticsPage() {
         setSensors(sensorsData)
         setMqttOnline(mqttData.mqtt_online)
         setMqttBroker(mqttData.broker || "")
+        if (mqttData.recent) setRecentMsgs(mqttData.recent)
         const historyMap: Record<number, SensorReading[]> = {}
         await Promise.all(
           sensorsData.map(async (s) => {
@@ -74,10 +78,26 @@ export default function StatisticsPage() {
     }
     load()
     const interval = setInterval(() => {
-      fetchMQTTStatus().then(d => { setMqttOnline(d.mqtt_online); setMqttBroker(d.broker || "") }).catch(() => {})
+      fetchMQTTStatus().then(d => {
+        setMqttOnline(d.mqtt_online)
+        setMqttBroker(d.broker || "")
+        if (d.recent) setRecentMsgs(d.recent)
+      }).catch(() => {})
     }, 15000)
     return () => clearInterval(interval)
   }, [])
+
+  const handleMqttConnect = async () => {
+    setMqttLoading(true)
+    try { await mqttConnect(); setMqttOnline(true) } catch { /* */ }
+    setMqttLoading(false)
+  }
+
+  const handleMqttDisconnect = async () => {
+    setMqttLoading(true)
+    try { await mqttDisconnect(); setMqttOnline(false) } catch { /* */ }
+    setMqttLoading(false)
+  }
 
   const getSensor = (name: string) => sensors.find((s) => s.name === name)
   const v1 = getSensor("Voltage 1")?.latest_value
@@ -109,6 +129,23 @@ export default function StatisticsPage() {
           <CardContent>
             <div className="text-lg font-bold">{mqttOnline ? "Connected" : "Offline"}</div>
             <p className="text-xs text-muted-foreground">{mqttBroker || "localhost"}:1883</p>
+            <div className="mt-3 flex gap-2">
+              {mqttOnline ? (
+                <button onClick={handleMqttDisconnect} disabled={mqttLoading}
+                  className="flex items-center gap-1 rounded-md bg-destructive/20 px-2 py-1 text-xs text-destructive hover:bg-destructive/30 cursor-pointer">
+                  <PowerOff className="h-3 w-3" /> Disconnect
+                </button>
+              ) : (
+                <button onClick={handleMqttConnect} disabled={mqttLoading}
+                  className="flex items-center gap-1 rounded-md bg-success/20 px-2 py-1 text-xs text-success hover:bg-success/30 cursor-pointer">
+                  <Power className="h-3 w-3" /> Connect
+                </button>
+              )}
+              <button onClick={handleMqttConnect} disabled={mqttLoading}
+                className="flex items-center gap-1 rounded-md bg-accent px-2 py-1 text-xs text-accent-foreground hover:bg-accent/70 cursor-pointer">
+                <RefreshCw className={`h-3 w-3 ${mqttLoading ? "animate-spin" : ""}`} /> Reconnect
+              </button>
+            </div>
           </CardContent>
         </Card>
 
@@ -182,6 +219,47 @@ export default function StatisticsPage() {
           </Card>
         ))}
       </div>
+
+      {/* Live MQTT Messages */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Live MQTT Messages</CardTitle>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="gap-1 text-xs">
+              <ScrollText className="h-3 w-3" />
+              {recentMsgs.length}
+            </Badge>
+            {mqttOnline && (
+              <Badge variant="secondary" className="gap-1 text-xs">
+                <span className="h-1.5 w-1.5 rounded-full bg-success inline-block animate-pulse" />
+                Live
+              </Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {recentMsgs.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No messages yet — MQTT may be offline</p>
+          ) : (
+            <div className="max-h-[300px] overflow-y-auto space-y-1 font-mono text-xs">
+              {[...recentMsgs].reverse().map((msg, i) => (
+                <div key={i} className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-muted/50">
+                  <span className="shrink-0 text-muted-foreground w-[110px]">
+                    {new Date(msg.timestamp).toLocaleTimeString()}
+                  </span>
+                  <span className="shrink-0 w-[80px] font-semibold text-foreground">
+                    {msg.sensor}
+                  </span>
+                  <span className="font-bold text-primary">
+                    {msg.value.toFixed(1)}
+                  </span>
+                  <span className="text-muted-foreground">{msg.unit}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Sensor Detail Tabs */}
       <Tabs defaultValue={sensors[0]?.id?.toString() || "all"}>

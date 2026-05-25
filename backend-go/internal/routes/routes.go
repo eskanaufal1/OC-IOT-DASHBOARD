@@ -27,6 +27,8 @@ func Setup(
 	mux.HandleFunc("GET /api/v1/sensors", protected(sensors.List))
 	mux.HandleFunc("GET /api/v1/sensors/", protected(sensors.History))
 	mux.HandleFunc("GET /api/v1/status/mqtt", protected(sensors.MQTTStatus))
+	mux.HandleFunc("POST /api/v1/status/mqtt/connect", protected(sensors.MQTTConnect))
+	mux.HandleFunc("POST /api/v1/status/mqtt/disconnect", protected(sensors.MQTTDisconnect))
 
 	mux.HandleFunc("GET /api/v1/chat/history", protected(chat.History))
 	mux.HandleFunc("POST /api/v1/chat/query", protected(chat.Query))
