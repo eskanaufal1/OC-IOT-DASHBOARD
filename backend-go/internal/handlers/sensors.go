@@ -60,7 +60,7 @@ func NewSensorsHandler() *SensorsHandler {
 		mqttOnline: false,
 	}
 
-	baseValues := []float64{220.5, 218.7, 8.5, 5.2, 1874.3, 1137.2}
+	baseValues := []float64{220.5, 218.7, 4.5, 1.5, 990.0, 330.0}
 	rng := rand.New(rand.NewSource(now.UnixNano()))
 
 	for i := range h.sensors {
@@ -69,40 +69,53 @@ func NewSensorsHandler() *SensorsHandler {
 		h.sensors[i].LatestTimestamp = &now
 	}
 
-	// Backfill 7 days of historical data at 60-second intervals
+	// Backfill 7 days at 60-second intervals — home devices:
+	// Circuit 1 = Kulkas (refrigerator), Circuit 2 = LED Smart TV
 	historySteps := 7 * 24 * 60
 	for step := historySteps; step >= 0; step-- {
 		t := now.Add(-time.Duration(step) * 60 * time.Second)
-		for i, s := range h.sensors {
-			b := baseValues[i%len(baseValues)]
-			v := b + (rng.Float64()-0.5)*b*0.08
-			if s.Type == "voltage" {
-				v = b + (rng.Float64()-0.5)*4.0
-			} else if s.Type == "amperage" {
-				hour := t.Hour()
-				factor := 1.0
-				if hour >= 6 && hour <= 9 {
-					factor = 1.4
-				} else if hour >= 18 && hour <= 22 {
-					factor = 1.2
-				} else if hour >= 0 && hour <= 5 {
-					factor = 0.5
-				}
-				v = b*factor + (rng.Float64()-0.5)*b*0.15
-			} else if s.Type == "power" {
-				hour := t.Hour()
-				factor := 1.0
-				if hour >= 6 && hour <= 9 {
-					factor = 1.4
-				} else if hour >= 18 && hour <= 22 {
-					factor = 1.2
-				} else if hour >= 0 && hour <= 5 {
-					factor = 0.5
-				}
-				v = b*factor + (rng.Float64()-0.5)*b*0.1
+		hour := t.Hour()
+
+		v1 := 220.5 + (rng.Float64()-0.5)*3.0
+		v2 := 218.7 + (rng.Float64()-0.5)*3.0
+
+		// Kulkas: compressor cycles 30min, 40% duty
+		cyclePos := math.Mod(t.Sub(time.Unix(0, 0)).Seconds(), 1800) / 1800
+		var a1 float64
+		if cyclePos < 0.40 {
+			a1 = 3.5 + rng.Float64()*4.0
+			if hour >= 12 && hour <= 16 { a1 += 0.5 }
+		} else {
+			a1 = 0.1 + rng.Float64()*0.2
+		}
+
+		// LED Smart TV: evening on, day standby, night min
+		var a2 float64
+		if hour >= 18 && hour <= 23 {
+			a2 = 1.8 + rng.Float64()*1.2
+		} else if hour >= 6 && hour <= 9 {
+			a2 = 0.5 + rng.Float64()*0.7
+		} else if hour >= 10 && hour <= 17 {
+			a2 = 0.1 + rng.Float64()*0.2
+		} else {
+			a2 = 0.03 + rng.Float64()*0.05
+		}
+
+		p1 := v1 * a1
+		p2 := v2 * a2
+
+		vals := []float64{
+			math.Round(v1*10) / 10, math.Round(v2*10) / 10,
+			math.Round(a1*10) / 10, math.Round(a2*10) / 10,
+			math.Round(p1*10) / 10, math.Round(p2*10) / 10,
+		}
+		for i := range h.sensors {
+			reading := models.SensorReading{
+				SensorID: h.sensors[i].ID,
+				Value:    vals[i],
+				Timestamp: t,
 			}
-			reading := models.SensorReading{SensorID: s.ID, Value: math.Round(v*10) / 10, Timestamp: t}
-			h.readings[s.ID] = append(h.readings[s.ID], reading)
+			h.readings[h.sensors[i].ID] = append(h.readings[h.sensors[i].ID], reading)
 		}
 	}
 

@@ -1,6 +1,6 @@
 """
 MQTT Sensor Publisher — publishes 6 sensor readings every 60 seconds via Mosquitto.
-Realistic daily load patterns with morning/evening peaks.
+Home devices: Circuit 1 = Kulkas (refrigerator), Circuit 2 = LED Smart TV.
 """
 import json
 import math
@@ -30,38 +30,64 @@ UNITS = {
     "power_1": "W", "power_2": "W",
 }
 
-def hour_factor(hour: int) -> float:
-    """Daily load pattern: peak 06-09 and 18-22, dip 00-05."""
-    if 6 <= hour <= 9:   return 1.35
-    if 18 <= hour <= 22: return 1.20
-    if 0 <= hour <= 5:   return 0.50
-    return 1.0
+_REFRIGERATOR_CYCLE = 1800  # 30-minute compressor cycle
+
+
+def _refrigerator_compressor_on(timestamp: float) -> bool:
+    """Refrigerator compressor cycles ~40% duty, 30 min period."""
+    cycle_pos = (timestamp % _REFRIGERATOR_CYCLE) / _REFRIGERATOR_CYCLE
+    return cycle_pos < 0.40
 
 
 def generate_reading(sensor: str, t: float) -> float:
     dt = datetime.fromtimestamp(t, tz=timezone.utc)
     h = dt.hour
-    f = hour_factor(h)
-    jitter = (random.random() - 0.5) * 0.06
 
     if sensor.startswith("voltage"):
         return round(220.5 + (random.random() - 0.5) * 3.0, 1)
-    elif sensor.startswith("current"):
-        base = 8.5 if sensor == "current_1" else 5.2
-        return round(base * f * (1 + jitter), 1)
+
+    elif sensor == "current_1":
+        # Kulkas (Refrigerator) — compressor cycles
+        if _refrigerator_compressor_on(t):
+            # Compressor running: 3-8A with slight variation
+            draw = random.uniform(3.5, 7.5)
+            # Slightly higher in hot afternoon
+            if 12 <= h <= 16:
+                draw += 0.5
+        else:
+            # Compressor off: only control electronics
+            draw = random.uniform(0.1, 0.3)
+        return round(draw, 1)
+
+    elif sensor == "current_2":
+        # LED Smart TV
+        if 18 <= h <= 23:
+            # Evening: TV is ON
+            draw = random.uniform(1.8, 3.0)
+        elif 6 <= h <= 9:
+            # Morning: maybe brief news check
+            draw = random.uniform(0.5, 1.2)
+        elif 10 <= h <= 17:
+            # Daytime: standby/off
+            draw = random.uniform(0.1, 0.3)
+        else:
+            # Night (00-05): standby only
+            draw = random.uniform(0.03, 0.08)
+        return round(draw, 1)
+
     elif sensor.startswith("power"):
-        base = 1874 if sensor == "power_1" else 1137
         v_key = f"voltage_{sensor[-1]}"
         c_key = f"current_{sensor[-1]}"
         v = generate_reading(v_key, t)
         c = generate_reading(c_key, t)
         return round(v * c, 1)
+
     return 0.0
 
 
 def main():
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, "sensor-publisher")
-    
+
     connected = False
     def on_connect(client, userdata, flags, rc, props=None):
         nonlocal connected
@@ -73,12 +99,11 @@ def main():
 
     try:
         client.connect(BROKER, PORT, 60)
-        client.loop_start()
     except Exception as e:
         print(f"[MQTT] Cannot connect to {BROKER}:{PORT} — {e}")
-        client.loop_start()
 
-    print(f"[Publisher] Starting — interval={INTERVAL}s")
+    client.loop_start()
+    print(f"[Publisher] Kulkas + LED Smart TV — interval={INTERVAL}s")
     seq = 0
 
     while True:
