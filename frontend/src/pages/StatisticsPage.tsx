@@ -120,6 +120,8 @@ export default function StatisticsPage() {
   const totalPower = (p1 ?? 0) + (p2 ?? 0)
   const totalCurrent = (a1 ?? 0) + (a2 ?? 0)
   const totalReadings = sensors.reduce((s, sens) => s + (histories[sens.id]?.length ?? 0), 0)
+  const loadShare1 = totalPower > 0 ? ((p1 ?? 0) / totalPower * 100).toFixed(0) : "--"
+  const loadShare2 = totalPower > 0 ? ((p2 ?? 0) / totalPower * 100).toFixed(0) : "--"
 
   return (
     <div className="space-y-6">
@@ -192,8 +194,8 @@ export default function StatisticsPage() {
       {/* Circuit Comparison */}
       <div className="grid gap-4 md:grid-cols-2">
         {[
-          { label: lang === "id" ? "Sirkuit 1 (Utama)" : "Circuit 1 (Primary)", v: v1, a: a1, p: p1, load: "~64%" },
-          { label: lang === "id" ? "Sirkuit 2 (Kedua)" : "Circuit 2 (Secondary)", v: v2, a: a2, p: p2, load: "~36%" },
+          { label: lang === "id" ? "Sirkuit 1 (Utama)" : "Circuit 1 (Primary)", v: v1, a: a1, p: p1, load: `~${loadShare1}%` },
+          { label: lang === "id" ? "Sirkuit 2 (Kedua)" : "Circuit 2 (Secondary)", v: v2, a: a2, p: p2, load: `~${loadShare2}%` },
         ].map((circuit, idx) => (
           <Card key={idx}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

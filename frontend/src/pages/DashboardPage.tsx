@@ -145,6 +145,8 @@ export default function DashboardPage() {
   const lineDiff = v1 != null && v2 != null ? Math.abs(v1 - v2).toFixed(1) : "--"
   const loadRatio = a1 != null && a2 != null ? (a2 / a1).toFixed(2) : "--"
   const monthlyCost = totalPower > 0 ? `$${((totalPower / 1000) * 0.12 * 24 * 30).toFixed(0)}` : "--"
+  const loadShare1 = totalPower > 0 ? ((p1 ?? 0) / totalPower * 100).toFixed(0) : "--"
+  const loadShare2 = totalPower > 0 ? ((p2 ?? 0) / totalPower * 100).toFixed(0) : "--"
 
   return (
     <div className="space-y-6">
@@ -300,7 +302,7 @@ export default function DashboardPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">{lang === "id" ? "Beban" : "Load share"}</span>
-                <span className="font-mono font-bold">~64%</span>
+                <span className="font-mono font-bold">~{loadShare1}%</span>
               </div>
             </div>
           </CardContent>
@@ -329,7 +331,7 @@ export default function DashboardPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">{lang === "id" ? "Beban" : "Load share"}</span>
-                <span className="font-mono font-bold">~36%</span>
+                <span className="font-mono font-bold">~{loadShare2}%</span>
               </div>
             </div>
           </CardContent>
