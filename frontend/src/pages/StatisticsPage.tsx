@@ -27,6 +27,12 @@ const kpiIcons: Record<string, React.ElementType> = {
   voltage: Zap, amperage: Activity, power: Gauge,
 }
 
+const sensorNameID: Record<string, string> = {
+  "Voltage 1": "Tegangan 1", "Voltage 2": "Tegangan 2",
+  "Current 1": "Arus 1", "Current 2": "Arus 2",
+  "Power 1": "Daya 1", "Power 2": "Daya 2",
+}
+
 function computeStats(readings: SensorReading[]) {
   if (readings.length === 0) return { avg: 0, min: 0, max: 0, latest: 0, count: 0, stddev: 0, trend: 0 }
   const values = readings.map((r) => r.value)
@@ -303,7 +309,7 @@ function SensorStatCard({
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{sensor.name}</CardTitle>
+        <CardTitle className="text-sm font-medium text-muted-foreground">{lang === "id" ? (sensorNameID[sensor.name] || sensor.name) : sensor.name}</CardTitle>
         <div className="rounded-lg bg-muted p-1.5 text-muted-foreground">
           <Icon className="h-4 w-4" />
         </div>
@@ -376,7 +382,7 @@ function SensorDetail({
 
       <Card>
         <CardHeader>
-          <CardTitle>{sensor.name} — {lang === "id" ? "Tren 7 Hari" : "7-Day Trend"}</CardTitle>
+          <CardTitle>{(lang === "id" ? (sensorNameID[sensor.name] || sensor.name) : sensor.name)} — {lang === "id" ? "Tren 7 Hari" : "7-Day Trend"}</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (

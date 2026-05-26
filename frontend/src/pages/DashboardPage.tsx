@@ -38,6 +38,11 @@ const typeLabels: Record<string, Record<string, string>> = {
   en: { voltage: "voltage", amperage: "amperage", power: "power" },
 }
 
+const nameLabels: Record<string, Record<string, string>> = {
+  id: { "Voltage 1": "Tegangan 1", "Voltage 2": "Tegangan 2", "Current 1": "Arus 1", "Current 2": "Arus 2", "Power 1": "Daya 1", "Power 2": "Daya 2" },
+  en: { "Voltage 1": "Voltage 1", "Voltage 2": "Voltage 2", "Current 1": "Current 1", "Current 2": "Current 2", "Power 1": "Power 1", "Power 2": "Power 2" },
+}
+
 const timeRanges = [
   { label: "1H", value: "1h" },
   { label: "6H", value: "6h" },
@@ -175,7 +180,7 @@ export default function DashboardPage() {
                 >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
-                      {sensor.name}
+                      {nameLabels[lang]?.[sensor.name] || sensor.name}
                     </CardTitle>
                     <div
                       className={`rounded-lg p-1.5 ${
