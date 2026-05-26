@@ -210,10 +210,10 @@ export default function DashboardPage() {
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <div>
             <CardTitle>
-              {selectedSensorData?.name || "Sensor"} History
+              {selectedSensorData?.name || "Sensor"} {lang === "id" ? "Riwayat" : "History"}
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              {selectedSensorData?.unit && `Unit: ${selectedSensorData.unit}`}
+              {selectedSensorData?.unit && `${lang === "id" ? "Satuan" : "Unit"}: ${selectedSensorData.unit}`}
             </p>
           </div>
           <ToggleGroup
@@ -277,15 +277,15 @@ export default function DashboardPage() {
           <CardContent>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Voltage 1</span>
+                <span className="text-sm text-muted-foreground">{lang === "id" ? "Tegangan 1" : "Voltage 1"}</span>
                 <span className="font-mono font-bold">{v1?.toFixed(1) ?? "--"} V</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Current 1</span>
+                <span className="text-sm text-muted-foreground">{lang === "id" ? "Arus 1" : "Current 1"}</span>
                 <span className="font-mono font-bold">{a1?.toFixed(1) ?? "--"} A</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Power 1</span>
+                <span className="text-sm text-muted-foreground">{lang === "id" ? "Daya 1" : "Power 1"}</span>
                 <span className="font-mono font-bold">{p1?.toFixed(0) ?? "--"} W</span>
               </div>
               <div className="flex items-center justify-between">
@@ -306,15 +306,15 @@ export default function DashboardPage() {
           <CardContent>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Voltage 2</span>
+                <span className="text-sm text-muted-foreground">{lang === "id" ? "Tegangan 2" : "Voltage 2"}</span>
                 <span className="font-mono font-bold">{v2?.toFixed(1) ?? "--"} V</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Current 2</span>
+                <span className="text-sm text-muted-foreground">{lang === "id" ? "Arus 2" : "Current 2"}</span>
                 <span className="font-mono font-bold">{a2?.toFixed(1) ?? "--"} A</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Power 2</span>
+                <span className="text-sm text-muted-foreground">{lang === "id" ? "Daya 2" : "Power 2"}</span>
                 <span className="font-mono font-bold">{p2?.toFixed(0) ?? "--"} W</span>
               </div>
               <div className="flex items-center justify-between">
