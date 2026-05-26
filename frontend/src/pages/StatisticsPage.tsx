@@ -266,14 +266,14 @@ export default function StatisticsPage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {sensors.map((sensor) => {
               const stats = computeStats(histories[sensor.id] || [])
-              return <SensorStatCard key={sensor.id} sensor={sensor} stats={stats} loading={loading} />
+              return <SensorStatCard key={sensor.id} sensor={sensor} stats={stats} loading={loading} lang={lang} />
             })}
           </div>
         </TabsContent>
 
         {sensors.map((sensor) => (
           <TabsContent key={sensor.id} value={sensor.id.toString()}>
-            <SensorDetail sensor={sensor} data={histories[sensor.id] || []} loading={loading} c={c} />
+            <SensorDetail sensor={sensor} data={histories[sensor.id] || []} loading={loading} c={c} lang={lang} />
           </TabsContent>
         ))}
       </Tabs>
@@ -282,11 +282,12 @@ export default function StatisticsPage() {
 }
 
 function SensorStatCard({
-  sensor, stats, loading,
+  sensor, stats, loading, lang,
 }: {
   sensor: Sensor
   stats: { avg: number; min: number; max: number; latest: number; count: number; stddev: number; trend: number }
   loading: boolean
+  lang: string
 }) {
   const Icon = kpiIcons[sensor.type] || Activity
   const isPositive = stats.trend > 0
@@ -336,12 +337,13 @@ function SensorStatCard({
 }
 
 function SensorDetail({
-  sensor, data, loading, c,
+  sensor, data, loading, c, lang,
 }: {
   sensor: Sensor
   data: SensorReading[]
   loading: boolean
   c: ReturnType<typeof getChartColors>
+  lang: string
 }) {
   const stats = computeStats(data)
   const oneDayAgo = Date.now() - 86400000
