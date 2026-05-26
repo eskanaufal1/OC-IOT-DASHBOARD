@@ -140,7 +140,7 @@ func (h *SensorsHandler) connectMQTT() {
 	opts := mqtt.NewClientOptions().
 		AddBroker("tcp://" + broker + ":" + port).
 		SetClientID("iot-go-backend").
-		SetAutoReconnect(false).
+		SetAutoReconnect(true).
 		SetKeepAlive(30 * time.Second).
 		SetOnConnectHandler(func(c mqtt.Client) {
 			h.mu.Lock()
