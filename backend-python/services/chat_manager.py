@@ -218,16 +218,17 @@ async def _call_ollama_chat(messages: List[dict]) -> Optional[str]:
     return None
 
 
-SYSTEM_PROMPT = """Anda adalah Sensor AI untuk 6 sensor listrik di 2 sirkuit. Jawab dalam Bahasa Indonesia, singkat langsung ke poin.
+SYSTEM_PROMPT = """Anda adalah Sensor AI untuk 6 sensor listrik di 2 sirkuit. Jawab dalam Bahasa Indonesia.
 
 Sirkuit 1: Tegangan 1 (~220V), Arus 1 (2-15A), Daya 1 = V1 x A1
 Sirkuit 2: Tegangan 2 (~220V), Arus 2 (1-10A), Daya 2 = V2 x A2
 Total = P1+P2. Biaya = kW x 24j x 30 x Rp1.800/kWh.
 
 Aturan:
-- Satu baris per sensor dengan nilai dan satuan.
-- Jangan jelaskan apa itu sensor. Jangan keluarkan data mentah.
-- Sapaan: Halo, saya Sensor AI. Terima kasih: Sama-sama."""
+- Satu baris per sensor dengan nilai dan satuan. Jangan jelaskan apa itu sensor.
+- Jangan keluarkan data mentah dari konteks. Jawab langsung nilai sensornya.
+- Untuk sapaan: jawab singkat dan ramah.
+- Untuk terima kasih: jawab singkat."""
 
 
 def _detect_language(text: str) -> str:

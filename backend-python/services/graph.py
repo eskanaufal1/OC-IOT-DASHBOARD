@@ -111,7 +111,7 @@ async def _generate(state: GraphState) -> GraphState:
     response = _call_ollama_sync(system_text, temperature=0.3, max_tokens=512)
 
     bad_prefixes = ("",)
-    if response and len(response.strip()) >= 5:
+    if response and len(response.strip()) >= 3:
         clean = response.strip()
         bad_prefixes = ("<|im_start|>", "<|im_end|>", "Use bullet", "Be concise",
                          "If data", "Provide a", "Ground answers", "For greetings",
