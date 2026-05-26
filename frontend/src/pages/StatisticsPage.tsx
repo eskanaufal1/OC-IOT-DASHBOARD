@@ -5,18 +5,19 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   ResponsiveContainer,
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import {
   Zap, Activity, Gauge, Wifi, WifiOff,
   TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight,
   Cpu, Radio, BarChart3, Power, PowerOff,
-  RefreshCw, ScrollText,
+  RefreshCw, ScrollText, HelpCircle,
 } from "lucide-react"
 import { fetchSensors, fetchSensorHistory, fetchMQTTStatus, mqttConnect, mqttDisconnect, type Sensor, type SensorReading } from "@/lib/api"
 import { useTheme } from "@/lib/theme"
@@ -31,6 +32,48 @@ const sensorNameID: Record<string, string> = {
   "Voltage 1": "Tegangan 1", "Voltage 2": "Tegangan 2",
   "Current 1": "Arus 1", "Current 2": "Arus 2",
   "Power 1": "Daya 1", "Power 2": "Daya 2",
+}
+
+const helps: Record<string, Record<string, string>> = {
+  id: {
+    mqtt: "Koneksi ke broker MQTT lokal. Data sensor dikirim setiap 60 detik melalui Mosquitto.",
+    sensorAktif: "Jumlah sensor yang aktif mengirim data secara real-time.",
+    dataPoints: "Total data yang tersimpan di memori (7 hari ke belakang pada interval 60 detik).",
+    circuit1: "Sirkuit 1: beban kulkas. Kompresor menyala 40% waktu, 3-8A saat ON.",
+    circuit2: "Sirkuit 2: beban LED Smart TV. 2-3A saat menyala (18-23), standby di luar jam tersebut.",
+    messages: "Log pesan MQTT terbaru yang diterima. Data diperbarui setiap 15 detik.",
+    rata: "Nilai rata-rata dari seluruh data yang tersimpan.",
+    simpangan: "Simpangan baku (σ) — semakin kecil semakin stabil.",
+    trend: "Grafik 7 hari menunjukkan pola harian penggunaan.",
+  },
+  en: {
+    mqtt: "Connection to local MQTT broker. Sensor data is published every 60 seconds via Mosquitto.",
+    sensorAktif: "Number of sensors actively sending real-time data.",
+    dataPoints: "Total data stored in memory (7 days back at 60-second intervals).",
+    circuit1: "Circuit 1: refrigerator load. Compressor ON 40% of time, 3-8A when active.",
+    circuit2: "Circuit 2: LED Smart TV load. 2-3A when ON (18-23), standby otherwise.",
+    messages: "Latest MQTT message log received. Data refreshes every 15 seconds.",
+    rata: "Average value of all stored readings.",
+    simpangan: "Standard deviation (σ) — smaller means more stable.",
+    trend: "7-day chart showing daily usage patterns.",
+  },
+}
+
+function HelpButton({ lang, helpKey }: { lang: string; helpKey: string }) {
+  const text = helps[lang]?.[helpKey]
+  if (!text) return null
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button type="button" className="ml-1 rounded-full p-0.5 text-muted-foreground/50 hover:text-muted-foreground cursor-help">
+          <HelpCircle className="h-3.5 w-3.5" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-[260px] text-xs">
+        {text}
+      </TooltipContent>
+    </Tooltip>
+  )
 }
 
 function computeStats(readings: SensorReading[]) {
@@ -124,6 +167,7 @@ export default function StatisticsPage() {
   const loadShare2 = totalPower > 0 ? ((p2 ?? 0) / totalPower * 100).toFixed(0) : "--"
 
   return (
+    <TooltipProvider delayDuration={300}>
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">{lang === "id" ? "Statistik" : "Statistics"}</h1>
@@ -132,11 +176,10 @@ export default function StatisticsPage() {
         </p>
       </div>
 
-      {/* MQTT Status + System Summary */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">MQTT Broker</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">MQTT Broker<HelpButton lang={lang} helpKey="mqtt" /></CardTitle>
             {mqttOnline ? <Wifi className="h-4 w-4 text-success" /> : <WifiOff className="h-4 w-4 text-destructive" />}
           </CardHeader>
           <CardContent>
@@ -169,7 +212,7 @@ export default function StatisticsPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{lang === "id" ? "Sensor Aktif" : "Live Sensors"}</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{lang === "id" ? "Sensor Aktif" : "Live Sensors"}<HelpButton lang={lang} helpKey="sensorAktif" /></CardTitle>
             <Radio className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -180,7 +223,7 @@ export default function StatisticsPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{lang === "id" ? "Data" : "Data Points"}</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{lang === "id" ? "Data" : "Data Points"}<HelpButton lang={lang} helpKey="dataPoints" /></CardTitle>
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -188,18 +231,16 @@ export default function StatisticsPage() {
             <p className="text-xs text-muted-foreground">{lang === "id" ? `Di ${sensors.length} sensor` : `Across ${sensors.length} sensors`}</p>
           </CardContent>
         </Card>
-
       </div>
 
-      {/* Circuit Comparison */}
       <div className="grid gap-4 md:grid-cols-2">
         {[
-          { label: lang === "id" ? "Sirkuit 1 (Utama)" : "Circuit 1 (Primary)", v: v1, a: a1, p: p1, load: `~${loadShare1}%` },
-          { label: lang === "id" ? "Sirkuit 2 (Kedua)" : "Circuit 2 (Secondary)", v: v2, a: a2, p: p2, load: `~${loadShare2}%` },
+          { label: lang === "id" ? "Sirkuit 1 (Utama)" : "Circuit 1 (Primary)", v: v1, a: a1, p: p1, load: `~${loadShare1}%`, helpKey: "circuit1" },
+          { label: lang === "id" ? "Sirkuit 2 (Kedua)" : "Circuit 2 (Secondary)", v: v2, a: a2, p: p2, load: `~${loadShare2}%`, helpKey: "circuit2" },
         ].map((circuit, idx) => (
           <Card key={idx}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">{circuit.label}</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{circuit.label}<HelpButton lang={lang} helpKey={circuit.helpKey} /></CardTitle>
               <div className="rounded-lg bg-primary/20 p-1.5 text-primary">
                 <Cpu className="h-4 w-4" />
               </div>
@@ -207,19 +248,19 @@ export default function StatisticsPage() {
             <CardContent>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Tegangan</span>
+                  <span className="text-muted-foreground">{lang === "id" ? "Tegangan" : "Voltage"}</span>
                   <span className="font-mono font-bold">{circuit.v?.toFixed(1) ?? "--"} V</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Arus</span>
+                  <span className="text-muted-foreground">{lang === "id" ? "Arus" : "Current"}</span>
                   <span className="font-mono font-bold">{circuit.a?.toFixed(1) ?? "--"} A</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Daya</span>
+                  <span className="text-muted-foreground">{lang === "id" ? "Daya" : "Power"}</span>
                   <span className="font-mono font-bold">{circuit.p?.toFixed(0) ?? "--"} W</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Beban</span>
+                  <span className="text-muted-foreground">{lang === "id" ? "Beban" : "Load share"}</span>
                   <span className="font-mono font-bold">{circuit.load}</span>
                 </div>
               </div>
@@ -228,10 +269,9 @@ export default function StatisticsPage() {
         ))}
       </div>
 
-      {/* Live MQTT Messages */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 py-3">
-          <CardTitle className="text-sm font-medium">{lang === "id" ? "Pesan MQTT Langsung" : "Live MQTT Messages"}</CardTitle>
+          <CardTitle className="text-sm font-medium">{lang === "id" ? "Pesan MQTT Langsung" : "Live MQTT Messages"}<HelpButton lang={lang} helpKey="messages" /></CardTitle>
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="gap-1 text-xs">
               <ScrollText className="h-3 w-3" />
@@ -269,12 +309,11 @@ export default function StatisticsPage() {
         </CardContent>
       </Card>
 
-      {/* Sensor Detail Tabs */}
       <Tabs defaultValue={sensors[0]?.id?.toString() || "all"}>
         <TabsList className="mb-4">
           <TabsTrigger value="all">{lang === "id" ? "Semua Sensor" : "All Sensors"}</TabsTrigger>
           {sensors.map((s) => (
-            <TabsTrigger key={s.id} value={s.id.toString()}>{s.name}</TabsTrigger>
+            <TabsTrigger key={s.id} value={s.id.toString()}>{lang === "id" ? (sensorNameID[s.name] || s.name) : s.name}</TabsTrigger>
           ))}
         </TabsList>
 
@@ -294,6 +333,7 @@ export default function StatisticsPage() {
         ))}
       </Tabs>
     </div>
+    </TooltipProvider>
   )
 }
 
@@ -311,7 +351,10 @@ function SensorStatCard({
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{lang === "id" ? (sensorNameID[sensor.name] || sensor.name) : sensor.name}</CardTitle>
+        <CardTitle className="text-sm font-medium text-muted-foreground">
+          {lang === "id" ? (sensorNameID[sensor.name] || sensor.name) : sensor.name}
+          <HelpButton lang={lang} helpKey={sensor.name === "Voltage 1" || sensor.name === "Voltage 2" ? "simpangan" : "rata"} />
+        </CardTitle>
         <div className="rounded-lg bg-muted p-1.5 text-muted-foreground">
           <Icon className="h-4 w-4" />
         </div>
@@ -384,7 +427,7 @@ function SensorDetail({
 
       <Card>
         <CardHeader>
-          <CardTitle>{(lang === "id" ? (sensorNameID[sensor.name] || sensor.name) : sensor.name)} — {lang === "id" ? "Tren 7 Hari" : "7-Day Trend"}</CardTitle>
+          <CardTitle>{(lang === "id" ? (sensorNameID[sensor.name] || sensor.name) : sensor.name)} — {lang === "id" ? "Tren 7 Hari" : "7-Day Trend"}<HelpButton lang={lang} helpKey="trend" /></CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -402,7 +445,7 @@ function SensorDetail({
                 <XAxis dataKey="timestamp" tick={{ fill: c.axis, fontSize: 12 }}
                   tickFormatter={(v) => new Date(v).toLocaleDateString()} />
                 <YAxis tick={{ fill: c.axis, fontSize: 12 }} />
-                <Tooltip
+                <RechartsTooltip
                   contentStyle={{ backgroundColor: c.tooltipBg, border: c.tooltipBorder, borderRadius: "8px", color: c.tooltipColor }}
                   labelFormatter={(v) => new Date(v).toLocaleString()} />
                 <Area type="monotone" dataKey="value" stroke="#00a2ed" strokeWidth={2} fill={`url(#color${sensor.id})`} />

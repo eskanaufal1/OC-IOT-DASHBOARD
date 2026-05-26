@@ -5,7 +5,7 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   ResponsiveContainer,
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -311,7 +311,7 @@ export default function DashboardPage() {
                 tickFormatter={(v) => new Date(v).toLocaleTimeString()}
               />
               <YAxis tick={{ fill: c.axis, fontSize: 12 }} />
-              <Tooltip
+              <RechartsTooltip
                 contentStyle={{
                   backgroundColor: c.tooltipBg,
                   border: c.tooltipBorder,
