@@ -5,6 +5,7 @@ Supports runtime model switching and graceful fallback.
 import asyncio
 import logging
 import os
+import re
 from typing import List, Optional, Dict
 
 import httpx
@@ -12,13 +13,15 @@ import httpx
 logger = logging.getLogger(__name__)
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
-DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "qwen3:0.6b")
-
-import re
+DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "gemma3:1b")
 
 MAX_TOKENS = 1024
 TEMPERATURE = 0.3
 N_CTX = 16384
+
+_STOP_TOKENS = ["\n\n\n", "<end_of_turn>", "<eos>", "<|im_end|>",
+                 "\n=== DATA SENSOR ===", "\n=== PERTANYAAN ===", "\n=== JAWABAN ===",
+                 "\n---\n", "\n==="]
 
 _THINK_PATTERN = re.compile(r"<think>(.*?)</think>", re.DOTALL | re.IGNORECASE)
 
@@ -121,6 +124,7 @@ async def _call_ollama_generate(prompt: str, temperature: float = None, max_toke
                     "num_ctx": N_CTX,
                     "temperature": temperature or TEMPERATURE,
                     "num_predict": max_tokens or 128,
+                    "stop": _STOP_TOKENS,
                 },
             })
             if r.status_code == 200:
@@ -158,6 +162,7 @@ def _call_ollama_sync(prompt: str, temperature: float = None, max_tokens: int = 
                     "num_ctx": N_CTX,
                     "temperature": temperature or TEMPERATURE,
                     "num_predict": max_tokens or 128,
+                    "stop": _STOP_TOKENS,
                 },
             })
             if r.status_code == 200:
@@ -194,6 +199,7 @@ async def _call_ollama_chat(messages: List[dict]) -> Optional[str]:
                     "num_ctx": N_CTX,
                     "temperature": TEMPERATURE,
                     "num_predict": MAX_TOKENS,
+                    "stop": _STOP_TOKENS,
                 },
             })
             if r.status_code == 200:
