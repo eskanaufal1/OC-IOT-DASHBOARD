@@ -29,7 +29,8 @@ async def get_sessions(user_id: int) -> list[dict]:
                       (SELECT COUNT(*) FROM chat_messages WHERE session_id = s.id) as msg_count
                FROM chat_sessions s
                WHERE s.user_id = ?
-               ORDER BY s.updated_at DESC""",
+               ORDER BY s.updated_at DESC
+               LIMIT 20""",
             (user_id,),
         )
         rows = await cur.fetchall()

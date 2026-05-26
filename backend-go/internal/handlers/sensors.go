@@ -23,10 +23,11 @@ type SensorsHandler struct {
 	wsClients  map[chan models.SensorReading]bool
 	wsMu       sync.RWMutex
 	done       chan struct{}
-	mqttOnline bool
-	mqttClient mqtt.Client
-	mqttBroker string
-	recentMsgs []mqttPayload
+	mqttOnline     bool
+	mqttClient     mqtt.Client
+	mqttBroker     string
+	lastMQTTOnline time.Time
+	recentMsgs     []mqttPayload
 	msgMu      sync.Mutex
 }
 
@@ -144,6 +145,7 @@ func (h *SensorsHandler) connectMQTT() {
 		SetOnConnectHandler(func(c mqtt.Client) {
 			h.mu.Lock()
 			h.mqttOnline = true
+			h.lastMQTTOnline = time.Now()
 			h.mu.Unlock()
 			log.Printf("[MQTT] Connected to %s:%s", broker, port)
 			c.Subscribe("sensors/#", 1, h.onMQTTMessage)
@@ -314,10 +316,15 @@ func (h *SensorsHandler) MQTTStatus(w http.ResponseWriter, r *http.Request) {
 	msgs := make([]mqttPayload, len(h.recentMsgs))
 	copy(msgs, h.recentMsgs)
 	h.msgMu.Unlock()
+	lastActive := ""
+	if !h.lastMQTTOnline.IsZero() {
+		lastActive = h.lastMQTTOnline.Format(time.RFC3339)
+	}
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"mqtt_online": h.MQTTOnline(),
-		"broker":      h.mqttBroker,
-		"recent":      msgs,
+		"mqtt_online":  h.MQTTOnline(),
+		"broker":       h.mqttBroker,
+		"last_active":   lastActive,
+		"recent":       msgs,
 	})
 }
 

@@ -49,6 +49,7 @@ export default function StatisticsPage() {
   const [loading, setLoading] = useState(true)
   const [mqttOnline, setMqttOnline] = useState(false)
   const [mqttBroker, setMqttBroker] = useState("")
+  const [lastActive, setLastActive] = useState("")
   const [recentMsgs, setRecentMsgs] = useState<Array<{ sensor: string; value: number; unit: string; timestamp: string }>>([])
   const [mqttLoading, setMqttLoading] = useState(false)
   const { theme } = useTheme()
@@ -66,6 +67,7 @@ export default function StatisticsPage() {
         setSensors(sensorsData)
         setMqttOnline(mqttData.mqtt_online)
         setMqttBroker(mqttData.broker || "")
+        setLastActive(mqttData.last_active || "")
         if (mqttData.recent) setRecentMsgs(mqttData.recent)
         const historyMap: Record<number, SensorReading[]> = {}
         await Promise.all(
@@ -83,6 +85,7 @@ export default function StatisticsPage() {
       fetchMQTTStatus().then(d => {
         setMqttOnline(d.mqtt_online)
         setMqttBroker(d.broker || "")
+        setLastActive(d.last_active || "")
         if (d.recent) setRecentMsgs(d.recent)
       }).catch(() => {})
     }, 15000)
@@ -130,7 +133,12 @@ export default function StatisticsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-lg font-bold">{mqttOnline ? (lang === "id" ? "Terhubung" : "Connected") : (lang === "id" ? "Offline" : "Offline")}</div>
-            <p className="text-xs text-muted-foreground">{mqttBroker || "localhost"}:1883</p>
+            <p className="text-xs text-muted-foreground">{mqttBroker || "localhost:1883"}</p>
+            {!mqttOnline && lastActive && (
+              <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+                {lang === "id" ? "Terakhir aktif: " : "Last active: "}{new Date(lastActive).toLocaleString()}
+              </p>
+            )}
             <div className="mt-3 flex gap-2">
               {mqttOnline ? (
                 <button onClick={handleMqttDisconnect} disabled={mqttLoading}
