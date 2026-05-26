@@ -33,6 +33,11 @@ const kpiIcons: Record<string, React.ElementType> = {
   power: Gauge,
 }
 
+const typeLabels: Record<string, Record<string, string>> = {
+  id: { voltage: "tegangan", amperage: "arus", power: "daya" },
+  en: { voltage: "voltage", amperage: "amperage", power: "power" },
+}
+
 const timeRanges = [
   { label: "1H", value: "1h" },
   { label: "6H", value: "6h" },
@@ -197,7 +202,7 @@ export default function DashboardPage() {
                       ) : (
                         <TrendingDown className="h-3 w-3 text-muted-foreground" />
                       )}
-                      <span>{sensor.type}</span>
+                      <span>{typeLabels[lang]?.[sensor.type] || sensor.type}</span>
                     </div>
                   </CardContent>
                 </Card>
